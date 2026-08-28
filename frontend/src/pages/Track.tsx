@@ -14,6 +14,13 @@ export const Track: React.FC = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Route guard
+  useEffect(() => {
+    if (!refId) {
+      navigate('/');
+    }
+  }, [refId, navigate]);
   
   // Action states (Simulation, Reminders)
   const [actionLoading, setActionLoading] = useState<'status' | 'reminder' | null>(null);

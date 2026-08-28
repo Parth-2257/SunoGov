@@ -13,6 +13,13 @@ export const Success: React.FC = () => {
   const [ackOpen, setAckOpen] = useState(false);
   const [copied, setCopied] = useState(false);
 
+  // Route guard
+  React.useEffect(() => {
+    if (!refId) {
+      navigate('/');
+    }
+  }, [refId, navigate]);
+
   const formattedDate = new Date().toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',

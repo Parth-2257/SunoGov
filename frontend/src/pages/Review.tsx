@@ -23,6 +23,13 @@ export const Review: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [createdGrievance, setCreatedGrievance] = useState<Grievance | null>(null);
 
+  // Route guard
+  useEffect(() => {
+    if (!analysis || !rawInput.trim()) {
+      navigate('/');
+    }
+  }, [analysis, rawInput, navigate]);
+
   // Simulated submission status messages
   const submissionSteps = [
     'Checking your details...',
