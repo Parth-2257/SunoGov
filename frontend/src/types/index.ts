@@ -44,4 +44,8 @@ export interface ResourceItem {
   description: string;
   link?: string;
   category: string;
+  what_it_means?: string;
+  what_you_need?: string[];
+  what_to_do?: string[];
+  when_to_file_grievance?: string;
 }
