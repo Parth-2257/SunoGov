@@ -1,4 +1,4 @@
-import { AIAnalysis, Grievance, ResourceItem } from '../types';
+import { Grievance, ResourceItem } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api';
 
@@ -31,15 +31,15 @@ export const apiService = {
   },
 
   /**
-   * AI Analysis placeholder
+   * AI Analysis request
    */
-  async analyzeRequest(text: string): Promise<AIAnalysis> {
+  async analyzeRequest(text: string): Promise<{ success: boolean; analysis: any }> {
     const response = await fetch(`${API_BASE_URL}/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ text }),
     });
-    return handleResponse<AIAnalysis>(response);
+    return handleResponse<{ success: boolean; analysis: any }>(response);
   },
 
   /**
