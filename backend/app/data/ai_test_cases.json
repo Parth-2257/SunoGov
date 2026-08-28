@@ -1,0 +1,212 @@
+[
+  {
+    "id": 1,
+    "input": "Mera PF transfer 3 mahine se pending hai.",
+    "expected_request_type": "GRIEVANCE",
+    "expected_intent": "PF_TRANSFER",
+    "description": "Delayed transfer Hinglish query"
+  },
+  {
+    "id": 2,
+    "input": "Mera purana PF naye employer mein transfer nahi hua.",
+    "expected_request_type": "GRIEVANCE",
+    "expected_intent": "PF_TRANSFER",
+    "description": "Employer PF transfer delay"
+  },
+  {
+    "id": 3,
+    "input": "Mera PF claim reject ho gaya.",
+    "expected_request_type": "GRIEVANCE",
+    "expected_intent": "PF_CLAIM",
+    "description": "PF withdrawal claim rejection Hinglish"
+  },
+  {
+    "id": 4,
+    "input": "Kaise check kare claim status? status check",
+    "expected_request_type": "STATUS",
+    "expected_intent": "GRIEVANCE_STATUS",
+    "description": "Grievance status query check"
+  },
+  {
+    "id": 5,
+    "input": "Medical emergency ke liye PF kaise withdraw kar sakta hoon?",
+    "expected_request_type": "INFORMATION",
+    "expected_intent": "PF_CLAIM",
+    "description": "Informational withdrawal query"
+  },
+  {
+    "id": 6,
+    "input": "Mujhe medical emergency ke liye PF nikalna hai.",
+    "expected_request_type": "GRIEVANCE",
+    "expected_intent": "PF_CLAIM",
+    "description": "Withdrawal request for medical reasons"
+  },
+  {
+    "id": 7,
+    "input": "Meri pension nahi aayi.",
+    "expected_request_type": "GRIEVANCE",
+    "expected_intent": "PENSION",
+    "description": "EPS pension payout issue"
+  },
+  {
+    "id": 8,
+    "input": "Meri grievance ka status check karna hai.",
+    "expected_request_type": "STATUS",
+    "expected_intent": "GRIEVANCE_STATUS",
+    "description": "Status timeline tracking query"
+  },
+  {
+    "id": 9,
+    "input": "मेरा पीएफ ट्रांसफर अभी तक नहीं हुआ है।",
+    "expected_request_type": "GRIEVANCE",
+    "expected_intent": "PF_TRANSFER",
+    "description": "Delayed transfer Hindi query"
+  },
+  {
+    "id": 10,
+    "input": "मेरा पीएफ क्लेम रिजेक्ट हो गया।",
+    "expected_request_type": "GRIEVANCE",
+    "expected_intent": "PF_CLAIM",
+    "description": "PF claim rejection Hindi query"
+  },
+  {
+    "id": 11,
+    "input": "माझा पीएफ ट्रान्सफर अजून झालेला नाही.",
+    "expected_request_type": "GRIEVANCE",
+    "expected_intent": "PF_TRANSFER",
+    "description": "Delayed transfer Marathi query"
+  },
+  {
+    "id": 12,
+    "input": "My PF transfer has been pending for three months.",
+    "expected_request_type": "GRIEVANCE",
+    "expected_intent": "PF_TRANSFER",
+    "description": "Delayed transfer English query"
+  },
+  {
+    "id": 13,
+    "input": "Help me with my PF.",
+    "expected_request_type": "UNKNOWN",
+    "expected_intent": "UNKNOWN",
+    "description": "Ambiguous support helper prompt"
+  },
+  {
+    "id": 14,
+    "input": "PF transfer status check online",
+    "expected_request_type": "STATUS",
+    "expected_intent": "GRIEVANCE_STATUS",
+    "description": "Online transfer status check query"
+  },
+  {
+    "id": 15,
+    "input": "Claim rejection update",
+    "expected_request_type": "GRIEVANCE",
+    "expected_intent": "PF_CLAIM",
+    "description": "Claim rejection english keywords"
+  },
+  {
+    "id": 16,
+    "input": "How to withdraw PF for health emergency?",
+    "expected_request_type": "INFORMATION",
+    "expected_intent": "PF_CLAIM",
+    "description": "Informational withdrawal english keyword check"
+  },
+  {
+    "id": 17,
+    "input": "PF transfer request is stuck",
+    "expected_request_type": "GRIEVANCE",
+    "expected_intent": "PF_TRANSFER",
+    "description": "Transfer stuck keywords"
+  },
+  {
+    "id": 18,
+    "input": "Claim Form 31 got rejected",
+    "expected_request_type": "GRIEVANCE",
+    "expected_intent": "PF_CLAIM",
+    "description": "Claim Form 31 rejection"
+  },
+  {
+    "id": 19,
+    "input": "EPS pension details check",
+    "expected_request_type": "GRIEVANCE",
+    "expected_intent": "PENSION",
+    "description": "Pension details query"
+  },
+  {
+    "id": 20,
+    "input": "Status check on my filed PF claim",
+    "expected_request_type": "STATUS",
+    "expected_intent": "GRIEVANCE_STATUS",
+    "description": "Filed claim status check"
+  },
+  {
+    "id": 21,
+    "input": "Maza pf transfer pending ahe",
+    "expected_request_type": "GRIEVANCE",
+    "expected_intent": "PF_TRANSFER",
+    "description": "Marathi mixed pending transfer query"
+  },
+  {
+    "id": 22,
+    "input": "Mera pension payout pending",
+    "expected_request_type": "GRIEVANCE",
+    "expected_intent": "PENSION",
+    "description": "Pension pending query"
+  },
+  {
+    "id": 23,
+    "input": "I want to check status of grievance",
+    "expected_request_type": "STATUS",
+    "expected_intent": "GRIEVANCE_STATUS",
+    "description": "Status query check"
+  },
+  {
+    "id": 24,
+    "input": "Grievance status of my PF transfer",
+    "expected_request_type": "STATUS",
+    "expected_intent": "GRIEVANCE_STATUS",
+    "description": "Status check takes priority over transfer"
+  },
+  {
+    "id": 25,
+    "input": "EPFO portal not working",
+    "expected_request_type": "UNKNOWN",
+    "expected_intent": "UNKNOWN",
+    "description": "Portal down general fallback query"
+  },
+  {
+    "id": 26,
+    "input": "Hello how are you",
+    "expected_request_type": "UNKNOWN",
+    "expected_intent": "UNKNOWN",
+    "description": "Chitchat fallback query"
+  },
+  {
+    "id": 27,
+    "input": "Random query text about nothing",
+    "expected_request_type": "UNKNOWN",
+    "expected_intent": "UNKNOWN",
+    "description": "Nonsense gibberish fallback query"
+  },
+  {
+    "id": 28,
+    "input": "EPFO pension status check",
+    "expected_request_type": "STATUS",
+    "expected_intent": "GRIEVANCE_STATUS",
+    "description": "Status check taking precedence over pension keyword"
+  },
+  {
+    "id": 29,
+    "input": "Pension claim Form 10D rejected",
+    "expected_request_type": "GRIEVANCE",
+    "expected_intent": "PF_CLAIM",
+    "description": "Rejection keyword taking precedence over pension"
+  },
+  {
+    "id": 30,
+    "input": "What is my UAN?",
+    "expected_request_type": "UNKNOWN",
+    "expected_intent": "UNKNOWN",
+    "description": "UAN retrieval not supported general fallback"
+  }
+]
