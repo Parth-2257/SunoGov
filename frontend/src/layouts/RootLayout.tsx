@@ -116,22 +116,27 @@ export const RootLayout: React.FC = () => {
       </main>
 
       {/* Trust & Prototype Disclaimer Footer */}
-      <footer className="bg-white border-t border-neutral-200 py-8 mt-auto">
+      <footer className="bg-neutral-100 border-t border-neutral-200 py-10 mt-auto">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
             
-            <div className="flex items-center gap-2">
-              <Landmark className="w-5 h-5 text-neutral-400" />
-              <span className="text-sm font-semibold text-neutral-500">SunoGov Hackathon Project</span>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <Landmark className="w-5 h-5 text-neutral-500" />
+                <span className="text-sm font-bold text-neutral-700">SunoGov Prototype Project</span>
+              </div>
+              <p className="text-xs text-neutral-500 leading-relaxed max-w-sm">
+                SunoGov is an independent public-service accessibility prototype. It is designed to assist citizens in preparing structured summaries for EPFO.
+              </p>
             </div>
 
-            <div className="text-center md:text-right max-w-md">
-              <p className="text-xs text-neutral-400 font-medium">
-                SunoGov is a simulated dashboard prototype. It does NOT submit real forms or requests to the Employees' Provident Fund Organisation (EPFO).
+            <div className="text-left md:text-right max-w-md space-y-2">
+              <p className="text-xs text-neutral-500 leading-relaxed">
+                <strong>Disclaimer:</strong> This is a simulation using synthetic mock data. Nothing is submitted to the Employees' Provident Fund Organisation (EPFO), and there is no live connection.
               </p>
-              <p className="text-[10px] text-red-500 font-bold uppercase tracking-wider mt-1.5">
-                NO live EPFO connection • Synthetic data only
-              </p>
+              <span className="inline-block text-[10px] font-bold text-neutral-600 bg-neutral-200 border border-neutral-300 px-2.5 py-0.5 rounded">
+                Prototype Environment • No Live EPFO Connection
+              </span>
             </div>
 
           </div>

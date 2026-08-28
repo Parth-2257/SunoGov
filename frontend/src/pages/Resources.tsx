@@ -12,7 +12,6 @@ import {
   Info, 
   FileText, 
   ArrowLeft,
-  AlertTriangle,
   CheckCircle2
 } from 'lucide-react';
 import { apiService } from '../services/api';
@@ -207,17 +206,17 @@ export const Resources: React.FC = () => {
         <div>
           <h2 className="text-2xl font-bold text-neutral-900 flex items-center gap-2">
             <BookOpen className="w-6 h-6 text-primary-600" />
-            Official Guides & Guidance Catalog
+            PF Help & Guidance
           </h2>
           <p className="text-sm text-neutral-500 mt-1">
-            Explore rules, required files, and procedural guides for EPFO citizens.
+            Explore rules, required documents, and procedural guides.
           </p>
         </div>
         <Button 
           variant="outline" 
           size="sm" 
           onClick={() => navigate(-1)}
-          className="self-start sm:self-auto gap-1 border-neutral-300 hover:bg-neutral-50 text-neutral-600 font-semibold"
+          className="self-start sm:self-auto gap-1 border-neutral-300 hover:bg-neutral-50 text-neutral-600 font-semibold focus:ring-2 focus:ring-primary-500"
         >
           <ArrowLeft className="w-4 h-4" />
           Back
@@ -225,10 +224,10 @@ export const Resources: React.FC = () => {
       </div>
 
       {/* Demo Warning Banner */}
-      <div className="p-3.5 bg-yellow-50 border border-yellow-100 rounded-xl flex gap-3 text-yellow-800">
-        <AlertTriangle className="w-5 h-5 text-yellow-600 shrink-0 mt-0.5" />
-        <p className="text-xs leading-relaxed">
-          <strong>Prototype Guide:</strong> This informational catalog contains synthetic demonstration references only. It does not constitute official legal advise or binding EPFO policy. For actual rules, visit the official EPFO web portals.
+      <div className="p-3 bg-neutral-100 border border-neutral-200 text-neutral-600 rounded-lg text-xs flex gap-2.5 items-start">
+        <Info className="w-4 h-4 text-neutral-500 shrink-0 mt-0.5" />
+        <p className="leading-relaxed">
+          <strong>Prototype Guide:</strong> This information catalog uses synthetic reference data. Nothing is submitted, and there is no live connection. For real EPFO rules, please visit the official EPFO portal.
         </p>
       </div>
 
@@ -246,7 +245,7 @@ export const Resources: React.FC = () => {
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="block w-full pl-10 pr-3 py-2.5 border border-neutral-300 rounded-lg text-sm bg-white placeholder-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 shadow-sm"
-            placeholder="Search guides, documents, or terms (e.g. advance, Form 31)..."
+            placeholder="What do you need help with?"
           />
         </div>
 

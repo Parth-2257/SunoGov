@@ -19,7 +19,8 @@ export const Report: React.FC = () => {
     analysis,
     triggerMockAnalysis,
     isAnalyzing,
-    resetJourney
+    resetJourney,
+    analysisError
   } = useSunoGov();
 
   const [uanError, setUanError] = useState('');
@@ -130,14 +131,27 @@ export const Report: React.FC = () => {
     <div className="max-w-2xl mx-auto space-y-6">
 
       {/* Progress Tracker (Sub-steps) */}
-      <div className="flex justify-between items-center px-2 text-xs text-neutral-400 font-semibold select-none border-b border-neutral-100 pb-3">
-        <span className={subStep === 'input' ? 'text-primary-600 font-bold' : ''}>1. Explain Problem</span>
-        <ChevronRight className="w-3 h-3 text-neutral-300" />
-        <span className={subStep === 'understanding' ? 'text-primary-600 font-bold' : ''}>2. Understanding</span>
-        <ChevronRight className="w-3 h-3 text-neutral-300" />
-        <span className={subStep === 'info' ? 'text-primary-600 font-bold' : ''}>3. Required Details</span>
-        <ChevronRight className="w-3 h-3 text-neutral-300" />
-        <span className={subStep === 'readiness' ? 'text-primary-600 font-bold' : ''}>4. Readiness</span>
+      <div className="flex items-center justify-between border-b border-neutral-200 pb-4 select-none">
+        <div className="flex items-center gap-1.5">
+          <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+            subStep === 'input' ? 'bg-primary-600 text-white shadow-sm' : 'bg-neutral-200 text-neutral-600'
+          }`}>1</span>
+          <span className={`text-xs font-semibold ${subStep === 'input' ? 'text-neutral-900 font-bold' : 'text-neutral-500'}`}>Explain Problem</span>
+        </div>
+        <ChevronRight className="w-3.5 h-3.5 text-neutral-300" />
+        <div className="flex items-center gap-1.5">
+          <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+            subStep === 'understanding' ? 'bg-primary-600 text-white shadow-sm' : 'bg-neutral-200 text-neutral-600'
+          }`}>2</span>
+          <span className={`text-xs font-semibold ${subStep === 'understanding' ? 'text-neutral-900 font-bold' : 'text-neutral-500'}`}>AI Understanding</span>
+        </div>
+        <ChevronRight className="w-3.5 h-3.5 text-neutral-300" />
+        <div className="flex items-center gap-1.5">
+          <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+            subStep === 'info' || subStep === 'readiness' ? 'bg-primary-600 text-white shadow-sm' : 'bg-neutral-200 text-neutral-600'
+          }`}>3</span>
+          <span className={`text-xs font-semibold ${(subStep === 'info' || subStep === 'readiness') ? 'text-neutral-900 font-bold' : 'text-neutral-500'}`}>Provide Details</span>
+        </div>
       </div>
 
       {/* ==========================================
@@ -338,8 +352,66 @@ export const Report: React.FC = () => {
 
       {/* ==========================================
           STEP 2: UNDERSTANDING
-         ========================================== */}
-      {subStep === 'understanding' && analysis && (
+          ========================================== */}
+      {subStep === 'understanding' && isAnalyzing && (
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-2xl font-extrabold text-neutral-900 animate-pulse">Understanding your request…</h2>
+            <p className="text-sm text-neutral-500 mt-1.5">
+              Just a moment while we review what you told us.
+            </p>
+          </div>
+          <Card className="flex flex-col items-center justify-center p-12 text-center space-y-4 bg-white border border-neutral-200 shadow-sm min-h-[220px]">
+            <Loader2 className="w-10 h-10 text-primary-500 animate-spin" />
+            <div className="space-y-1">
+              <h3 className="text-base font-bold text-neutral-800">Analyzing your words</h3>
+              <p className="text-xs text-neutral-500 max-w-sm">
+                SunoGov is processing your description to identify categories and missing details.
+              </p>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {subStep === 'understanding' && analysisError && (
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-2xl font-extrabold text-neutral-900">Analysis Failed</h2>
+            <p className="text-sm text-neutral-500 mt-1.5">
+              We encountered an issue while trying to analyze your request.
+            </p>
+          </div>
+          <Card className="flex flex-col items-center justify-center p-8 text-center space-y-4 bg-white border border-red-200 shadow-sm">
+            <AlertCircle className="w-10 h-10 text-red-500" />
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold text-neutral-800">Connection Issue</h3>
+              <p className="text-xs text-neutral-500 max-w-sm leading-relaxed">
+                We couldn't process your request right now. Please try again.
+              </p>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setSubStep('input')}
+                className="text-xs font-semibold px-4 py-2 border-neutral-300"
+              >
+                Go Back
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                onClick={() => triggerMockAnalysis(rawInput)}
+                className="text-xs font-semibold px-4 py-2"
+              >
+                Retry Analysis
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {subStep === 'understanding' && !isAnalyzing && !analysisError && analysis && (
         <div className="space-y-6">
           <div>
             <h2 className="text-2xl font-extrabold text-neutral-900">Here's what we understood</h2>
@@ -348,18 +420,25 @@ export const Report: React.FC = () => {
             </p>
           </div>
 
-          <Card className="divide-y divide-neutral-100">
+          <Card className="divide-y divide-neutral-100 bg-white shadow-sm border border-neutral-200">
             <div className="pb-5 space-y-2">
               <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block">Your Issue</span>
-              <p className="text-lg font-bold text-neutral-900">
+              <p className="text-lg font-bold text-neutral-900 leading-snug">
                 {analysis.summary}
               </p>
             </div>
 
             <div className="py-5 space-y-2">
               <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block">What you told us</span>
-              <p className="text-sm text-neutral-600 leading-relaxed">
+              <p className="text-sm text-neutral-600 leading-relaxed bg-neutral-50 p-3 rounded-lg border border-neutral-100 italic">
                 "{rawInput}"
+              </p>
+            </div>
+
+            <div className="py-3 flex items-center gap-2 text-neutral-500">
+              <Info className="w-4 h-4 text-primary-500 shrink-0" />
+              <p className="text-xs text-neutral-600">
+                AI-generated understanding • Please review before continuing.
               </p>
             </div>
 
@@ -367,28 +446,21 @@ export const Report: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setSubStep('input')}
-                className="inline-flex items-center gap-1 text-sm font-semibold text-neutral-500 hover:text-neutral-700 focus:outline-none"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-neutral-500 hover:text-neutral-700 focus:outline-none focus:underline"
               >
-                <Edit2 className="w-4 h-4" />
+                <Edit2 className="w-3.5 h-3.5" />
                 Need to change something?
               </button>
 
               <Button 
                 variant="primary" 
                 onClick={handleConfirmUnderstanding}
-                className="w-full sm:w-auto"
+                className="w-full sm:w-auto px-6 font-semibold shadow-sm focus:ring-2 focus:ring-primary-500"
               >
                 Confirm
               </Button>
             </div>
           </Card>
-
-          <div className="p-3 bg-neutral-100 border border-neutral-200 text-neutral-600 rounded-lg text-xs flex items-center gap-2">
-            <Info className="w-4.5 h-4.5 text-neutral-400 shrink-0" />
-            <p className="font-semibold text-neutral-700">
-              AI-generated understanding • Please review before continuing.
-            </p>
-          </div>
         </div>
       )}
 
@@ -504,57 +576,54 @@ export const Report: React.FC = () => {
           ) : (
             <div className="space-y-6">
               <div>
-                <h2 className="text-2xl font-extrabold text-neutral-900">We need one thing from you</h2>
+                <h2 className="text-2xl font-extrabold text-neutral-900">We need one detail to continue</h2>
                 <p className="text-sm text-neutral-500 mt-1.5">
-                  Provide the missing detail identified below to complete your simulated filing.
+                  Please provide the following identifier to locate your simulated member record.
                 </p>
               </div>
 
-              <Card>
+              <Card className="bg-white border border-neutral-200 shadow-sm">
                 <form onSubmit={handleInfoSubmit} className="space-y-6">
                   
                   {/* Field Label & Explanation */}
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-sm font-bold text-neutral-800 uppercase tracking-wide">Missing Detail: UAN</span>
+                      <span className="text-xs font-bold text-neutral-800 uppercase tracking-wider">UAN Number (Universal Account Number)</span>
                       <span className="text-xs font-semibold px-2 py-0.5 bg-red-50 text-red-700 rounded-full border border-red-100">Required</span>
                     </div>
                     
                     {/* Explain why we ask */}
-                    <div className="p-4 bg-primary-50 rounded-lg border border-primary-100">
-                      <h4 className="text-xs font-bold text-primary-800 uppercase tracking-wide">Why do we ask?</h4>
-                      <p className="text-xs text-primary-700 mt-1 leading-relaxed">
-                        {analysis.missing_fields[0]?.description || 'We need it to identify the PF record related to your grievance.'}
-                      </p>
+                    <div className="p-3.5 bg-primary-50 rounded-lg border border-primary-100 text-xs text-primary-800 leading-relaxed">
+                      <strong>Why we need it:</strong> We use this only to identify the simulated PF account in this prototype. {analysis.missing_fields[0]?.description}
                     </div>
                   </div>
 
                   {/* UAN Input */}
                   <Input
-                    label="Enter UAN Number"
-                    placeholder="DEMO-123456"
+                    label="Synthetic UAN Value"
+                    placeholder="e.g. DEMO-1234"
                     value={uan}
                     error={uanError}
                     onChange={(e) => {
                       setUan(e.target.value);
                       if (e.target.value.trim()) setUanError('');
                     }}
-                    helperText="For this prototype, use demo information only. Do not input your actual EPFO credentials."
+                    helperText="Important: Do NOT enter actual EPFO details. Use a dummy value like DEMO-1234."
                   />
 
                   {/* Buttons */}
-                  <div className="flex justify-between items-center pt-2 border-t border-neutral-100">
+                  <div className="flex justify-between items-center pt-4 border-t border-neutral-100">
                     <button
                       type="button"
                       onClick={() => setSubStep('understanding')}
-                      className="text-sm font-semibold text-neutral-500 hover:text-neutral-700 focus:outline-none"
+                      className="inline-flex items-center gap-1 text-xs font-bold text-neutral-500 hover:text-neutral-700 focus:outline-none"
                     >
                       ← Back
                     </button>
                     <Button 
                       type="submit" 
                       variant="primary" 
-                      className="w-full sm:w-auto"
+                      className="w-full sm:w-auto px-6 font-semibold shadow-sm focus:ring-2 focus:ring-primary-500"
                     >
                       Continue
                     </Button>

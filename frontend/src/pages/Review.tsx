@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useSunoGov } from '../context/SunoGovContext';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Eye, Edit2, ShieldCheck, ChevronDown, ChevronUp, Loader2, AlertCircle } from 'lucide-react';
+import { Edit2, ShieldCheck, ChevronDown, ChevronUp, Loader2, AlertCircle, ChevronRight } from 'lucide-react';
 import { apiService } from '../services/api';
 import { Grievance } from '../types';
 
@@ -123,9 +123,27 @@ export const Review: React.FC = () => {
   return (
     <div className="max-w-2xl mx-auto space-y-6">
       
-      <div className="flex items-center gap-2 text-neutral-500">
-        <Eye className="w-5 h-5 text-primary-500" />
-        <span className="text-sm font-semibold uppercase tracking-wider">Step 5: Review before submitting</span>
+      {/* Progress Tracker (Sub-steps) */}
+      <div className="flex items-center justify-between border-b border-neutral-200 pb-4 select-none">
+        <div className="flex items-center gap-1.5">
+          <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold bg-neutral-200 text-neutral-600">1</span>
+          <span className="text-xs font-semibold text-neutral-500">Explain Problem</span>
+        </div>
+        <ChevronRight className="w-3.5 h-3.5 text-neutral-300" />
+        <div className="flex items-center gap-1.5">
+          <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold bg-neutral-200 text-neutral-600">2</span>
+          <span className="text-xs font-semibold text-neutral-500">AI Understanding</span>
+        </div>
+        <ChevronRight className="w-3.5 h-3.5 text-neutral-300" />
+        <div className="flex items-center gap-1.5">
+          <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold bg-neutral-200 text-neutral-600">3</span>
+          <span className="text-xs font-semibold text-neutral-500">Provide Details</span>
+        </div>
+        <ChevronRight className="w-3.5 h-3.5 text-neutral-300" />
+        <div className="flex items-center gap-1.5">
+          <span className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold bg-primary-600 text-white shadow-sm">4</span>
+          <span className="text-xs font-semibold text-neutral-900 font-bold">Review & Submit</span>
+        </div>
       </div>
 
       <Card className="space-y-6">
