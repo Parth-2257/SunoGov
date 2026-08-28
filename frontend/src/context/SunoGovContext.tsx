@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState } from 'react';
 import { AIAnalysis, Grievance, GrievanceStatus } from '../types';
+import { apiService } from '../services/api';
 
 export type SubStepType = 'input' | 'understanding' | 'info' | 'readiness';
 
@@ -21,8 +22,10 @@ interface SunoGovContextType {
   status: GrievanceStatus | null;
   setStatus: (val: GrievanceStatus | null) => void;
   resetJourney: () => void;
-  triggerMockAnalysis: (text: string) => void;
+  triggerMockAnalysis: (text: string) => Promise<void>;
   updateGrievance: (newGrievance: Grievance | null) => void;
+  isAnalyzing: boolean;
+  analysisError: string | null;
 }
 
 const SunoGovContext = createContext<SunoGovContextType | undefined>(undefined);
@@ -36,6 +39,10 @@ export const SunoGovProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [grievance, setGrievance] = useState<Grievance | null>(null);
   const [refId, setRefId] = useState<string | null>(null);
   const [status, setStatus] = useState<GrievanceStatus | null>(null);
+  
+  // Asynchronous API load states
+  const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
 
   const updateGrievance = (newGrievance: Grievance | null) => {
     setGrievance(newGrievance);
@@ -43,60 +50,62 @@ export const SunoGovProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setStatus(newGrievance ? newGrievance.status : null);
   };
 
-  // Generate deterministic mock analysis based on input text keywords
-  const triggerMockAnalysis = (text: string) => {
-    const cleanText = text.toLowerCase();
-    
-    let requestType: 'GRIEVANCE' | 'INFORMATION' | 'STATUS' | 'UNKNOWN' = 'GRIEVANCE';
-    let intentName = 'DEMO_PF_TRANSFER_DELAY';
-    let intentDesc = 'Citizen is experiencing delay in settling PF transfer request.';
-    let summary = 'PF transfer appears to be pending for approximately 3 months.';
-    let missingDesc = 'We need your UAN to identify the PF record related to your grievance.';
-
-    if (cleanText.includes('reject') || cleanText.includes('rejection') || cleanText.includes('kharij')) {
-      intentName = 'DEMO_PF_CLAIM_REJECTED';
-      intentDesc = 'Citizen withdrawal claim was rejected.';
-      summary = 'PF withdrawal claim Form 19/31 rejected by regional office.';
-      missingDesc = 'We need your UAN to retrieve your claim records and identify rejection reasons.';
-    } else if (cleanText.includes('pension') || cleanText.includes('retired') || cleanText.includes('eps')) {
-      intentName = 'DEMO_PENSION_ISSUE';
-      intentDesc = 'Citizen inquiring or complaining about pension payout eligibility.';
-      summary = 'EPS pension scheme eligibility and payout issues.';
-      missingDesc = 'We need your UAN to inspect your total service tenure for pension calculations.';
-    } else if (cleanText.includes('status') || cleanText.includes('check') || cleanText.includes('track')) {
-      requestType = 'STATUS';
-      intentName = 'DEMO_TRACKING_INQUIRY';
-      intentDesc = 'Citizen is trying to check the status of a filed grievance.';
-      summary = 'Query tracking current status of files.';
-      missingDesc = 'We need your UAN to search active ticket listings.';
-    } else if (!cleanText.includes('transfer') && !cleanText.includes('pending') && cleanText.length > 0) {
-      // General fallback so any typing works
-      intentName = 'DEMO_GENERAL_GRIEVANCE';
-      intentDesc = 'Citizen described a general EPFO support issue.';
-      summary = `Simulated general grievance: "${text.substring(0, 60)}${text.length > 60 ? '...' : ''}"`;
-      missingDesc = 'We need your UAN to verify your member account profile details.';
+  // Triggers real API analysis request targeting FastAPI backend
+  const triggerMockAnalysis = async (text: string) => {
+    setIsAnalyzing(true);
+    setAnalysisError(null);
+    try {
+      // Safe trim of the simulated prototype transcript tags if prefixed
+      const cleanText = text.replace(/^\[DEMO TRANSCRIPT\]\s*/i, '');
+      const response = await apiService.analyzeRequest(cleanText);
+      
+      if (response.success && response.analysis) {
+        const result = response.analysis;
+        
+        // Map backend AIAnalysisSchema to frontend client types
+        const clientAnalysis: AIAnalysis = {
+          request_type: result.request_type,
+          intent: {
+            name: result.intent,
+            confidence: result.confidence,
+            description: result.summary
+          },
+          extracted_fields: {
+            uan: null
+          },
+          missing_fields: result.missing_fields.map((f: any) => ({
+            field_name: f.field,
+            field_type: 'string',
+            description: f.reason
+          })),
+          summary: result.summary,
+          confidence: result.confidence
+        };
+        
+        setAnalysis(clientAnalysis);
+      } else {
+        throw new Error('Analysis returned unsuccessful response payload.');
+      }
+    } catch (err: any) {
+      setAnalysisError(err.message || 'Error executing text analysis request.');
+      // Enforce clean UNKNOWN fallback models on exception
+      setAnalysis({
+        request_type: 'UNKNOWN',
+        intent: {
+          name: 'UNKNOWN',
+          confidence: 0.30,
+          description: 'Safe fallback triggered on query classification error.'
+        },
+        extracted_fields: {
+          uan: null
+        },
+        missing_fields: [],
+        summary: 'Safe fallback trigger due to system exception.',
+        confidence: 0.30
+      });
+    } finally {
+      setIsAnalyzing(false);
     }
-
-    setAnalysis({
-      request_type: requestType,
-      intent: {
-        name: intentName,
-        confidence: 0.95,
-        description: intentDesc,
-      },
-      extracted_fields: {
-        uan: null
-      },
-      missing_fields: [
-        {
-          field_name: 'uan',
-          field_type: 'string',
-          description: missingDesc,
-        }
-      ],
-      summary: summary,
-      confidence: 0.94
-    });
   };
 
   const resetJourney = () => {
@@ -108,6 +117,8 @@ export const SunoGovProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setGrievance(null);
     setRefId(null);
     setStatus(null);
+    setIsAnalyzing(false);
+    setAnalysisError(null);
   };
 
   return (
@@ -131,7 +142,9 @@ export const SunoGovProvider: React.FC<{ children: React.ReactNode }> = ({ child
         setStatus,
         resetJourney,
         triggerMockAnalysis,
-        updateGrievance
+        updateGrievance,
+        isAnalyzing,
+        analysisError
       }}
     >
       {children}
