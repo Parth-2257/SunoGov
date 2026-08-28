@@ -43,9 +43,9 @@ export const apiService = {
   },
 
   /**
-   * Grievance Creation placeholder
+   * Grievance Creation
    */
-  async createGrievance(data: Omit<Grievance, 'id' | 'status' | 'created_at' | 'updated_at' | 'reminders_sent'>): Promise<Grievance> {
+  async createGrievance(data: Omit<Grievance, 'id' | 'status' | 'created_at' | 'updated_at' | 'is_demo' | 'last_reminded_at'>): Promise<Grievance> {
     const response = await fetch(`${API_BASE_URL}/grievances`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -55,7 +55,7 @@ export const apiService = {
   },
 
   /**
-   * Fetch Grievance details placeholder
+   * Fetch Grievance details
    */
   async getGrievance(id: string): Promise<Grievance> {
     const response = await fetch(`${API_BASE_URL}/grievances/${id}`);
@@ -63,13 +63,23 @@ export const apiService = {
   },
 
   /**
-   * Send a grievance reminder placeholder
+   * Send a grievance reminder
    */
-  async sendReminder(id: string): Promise<{ success: boolean }> {
+  async sendReminder(id: string): Promise<{ success: boolean; message: string; grievance_id: string }> {
     const response = await fetch(`${API_BASE_URL}/grievances/${id}/remind`, {
       method: 'POST',
     });
-    return handleResponse<{ success: boolean }>(response);
+    return handleResponse<{ success: boolean; message: string; grievance_id: string }>(response);
+  },
+
+  /**
+   * Simulate next status update
+   */
+  async simulateStatus(id: string): Promise<Grievance> {
+    const response = await fetch(`${API_BASE_URL}/grievances/${id}/simulate-status`, {
+      method: 'POST',
+    });
+    return handleResponse<Grievance>(response);
   },
 
   /**
