@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import List, Dict, Optional, Any
 from pydantic import BaseModel, Field
+from app.ai.schemas import AIAnalysisSchema
 
 
 # ==========================================
@@ -63,7 +64,7 @@ class AnalysisRequest(BaseModel):
 
 class AnalysisResponse(BaseModel):
     success: bool = True
-    analysis: AIAnalysis
+    analysis: AIAnalysisSchema
 
 
 class GrievanceCreate(BaseModel):
@@ -96,3 +97,7 @@ class ResourceItem(BaseModel):
     description: str
     link: Optional[str] = None
     category: str
+    what_it_means: Optional[str] = None
+    what_you_need: Optional[List[str]] = None
+    what_to_do: Optional[List[str]] = None
+    when_to_file_grievance: Optional[str] = None
