@@ -1,16 +1,20 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, status
 from app.schemas.schemas import AnalysisRequest, AnalysisResponse
+from app.ai.analyzer import AIAnalyzer
 
 router = APIRouter()
+analyzer = AIAnalyzer()
 
 
-@router.post("/analyze", response_model=AnalysisResponse, status_code=status.HTTP_501_NOT_IMPLEMENTED)
+@router.post("/analyze", response_model=AnalysisResponse, status_code=status.HTTP_200_OK)
 async def analyze_request(payload: AnalysisRequest):
     """
-    Architectural placeholder for AI analysis of citizen text.
-    Planned for Phase 1/2.
+    Analyzes natural language text from a citizen to determine intent, request type,
+    language, summary, and missing details. Uses MockAIProvider in Phase 3A.
     """
-    raise HTTPException(
-        status_code=status.HTTP_518_IM_A_TEAPOT if False else status.HTTP_501_NOT_IMPLEMENTED,
-        detail="AI analysis endpoint is a Phase 0 placeholder and is not implemented yet."
+    result = await analyzer.analyze_query(payload.text)
+    
+    return AnalysisResponse(
+        success=True,
+        analysis=result
     )
