@@ -4,9 +4,9 @@ SunoGov is a citizen-first public-service accessibility prototype built for the 
 
 > **“Tell us what happened. Not what form to fill.”**
 
-SunoGov reimagines the citizen-facing experience of complex public-service workflows. It allows a citizen to explain their public-service issues naturally using text or voice. SunoGov intends to use AI to classify the problem, identify the correct category, collect details, and simulate an interaction with government services.
+SunoGov simplifies and streamlines the citizen-facing experience of complex public-service workflows. It allows citizens to explain their public-service issues naturally in text or voice (English, Hindi, or Marathi). SunoGov uses AI to classify the query type, determine category intents, extract required fields, and guide citizens through structured mock grievance submissions or official information guidelines.
 
-The initial target use case is **EPFO (Employees' Provident Fund Organisation) Grievance Assistance**.
+The target use case is **EPFO (Employees' Provident Fund Organisation) Grievance Assistance**.
 
 ---
 
@@ -19,13 +19,23 @@ The initial target use case is **EPFO (Employees' Provident Fund Organisation) G
 
 ---
 
+## Key Features
+
+1. **Intelligent Query Analysis**: Powered by OpenRouter (`z-ai/glm-5.3-flash` model), parsing text inputs and categorizing requests into `GRIEVANCE`, `INFORMATION`, or `STATUS` queries.
+2. **Indian Language Voice Input**: Powered by browser Web Speech API, allowing voice inputs in English, Hindi, and Marathi.
+3. **Informational Guidance Center**: Automatically routes informational queries (`INFORMATION`) to relevant procedural resources (collapsible guides covering withdrawals, transfers, and pension rules) with search and tag filters.
+4. **PII Safety & Operations**: Zero hardcoding of API keys. PII filters prevent storing or logging raw descriptions, Aadhaar, or UAN numbers.
+5. **Interactive Timeline Simulation**: Allows citizens to trigger status updates on mock grievances and submit reminders.
+
+---
+
 ## Technology Stack
 
 ### Frontend
-* **React** with **TypeScript**
+* **React 19** with **TypeScript**
 * **Vite** (Build Tool)
 * **Tailwind CSS** (Styling)
-* **React Router v6** (Routing)
+* **React Router v7** (Routing)
 * **Lucide React** (Icons)
 
 ### Backend
@@ -33,42 +43,6 @@ The initial target use case is **EPFO (Employees' Provident Fund Organisation) G
 * **FastAPI** (Web Framework)
 * **Pydantic v2** (Data Validation & Serialization)
 * **Uvicorn** (ASGI Web Server)
-
----
-
-## Project Structure
-
-```text
-sunogov/
-│
-├── frontend/             # React/TypeScript/Vite Frontend Application
-│   ├── src/
-│   │   ├── components/   # Reusable UI parts (buttons, inputs, layouts)
-│   │   ├── pages/        # Placeholder views representing routing structure
-│   │   ├── services/     # Centralized API client service
-│   │   ├── types/        # TypeScript interfaces & enums representing API contracts
-│   │   └── data/         # Synthetic frontend data scenarios
-│   └── package.json
-│
-├── backend/              # FastAPI Backend Application
-│   ├── app/
-│   │   ├── routes/       # Health, analyze, grievances, and resources endpoints
-│   │   ├── core/         # Configuration loading using pydantic-settings
-│   │   ├── schemas/      # Input/Output data schemas
-│   │   └── data/         # Backend mock scenarios
-│   └── requirements.txt
-│
-└── docs/                 # System Architecture & Development Guidelines
-```
-
----
-
-## Development Phases
-
-* **Phase 0 (Current)**: Project Foundation & Architecture. Clean monorepo structure, type safety, environment configuration, routing skeleton, central API service, backend endpoints with health checks, and responsive design systems.
-* **Phase 1 (Planned)**: Controlled Local Mock Journey. Citizen conversational interface powered by local mock responses.
-* **Phase 2 (Planned)**: AI & Storage Integration. OpenAI APIs, Speech-to-Text, and MongoDB persistence.
-* **Phase 3 (Planned)**: Mock Government service & Testing. Interactive simulated EPFO service.
 
 ---
 
@@ -99,7 +73,7 @@ Ensure you have **Node.js (v20+)** and **Python (v3.10+)** installed on your mac
    ```bash
    uvicorn app.main:app --reload
    ```
-   The backend API will run at `http://127.0.0.1:8000`. You can check the health check status at `http://127.0.0.1:8000/api/health`.
+   The backend API will run at `http://localhost:8000`. You can check the health status at `http://localhost:8000/api/health`.
 
 ### 2. Setting up Frontend
 
@@ -111,7 +85,7 @@ Ensure you have **Node.js (v20+)** and **Python (v3.10+)** installed on your mac
    ```bash
    npm install
    ```
-3. Copy the environment file and configure if necessary:
+3. Copy the environment file:
    ```bash
    cp .env.example .env
    ```
@@ -120,3 +94,8 @@ Ensure you have **Node.js (v20+)** and **Python (v3.10+)** installed on your mac
    npm run dev
    ```
    The frontend application will run at `http://localhost:5173`.
+
+---
+
+## Deployment & Production Configurations
+For full instructions on deploying the frontend to **Vercel** and the backend to **Render**, please review the [Deployment Guide](docs/deployment.md).
