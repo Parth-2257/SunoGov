@@ -1,40 +1,66 @@
 from fastapi import APIRouter, HTTPException, status
 from app.schemas.schemas import GrievanceCreate, GrievanceResponse
+from app.services.grievance_service import GrievanceService, GrievanceNotFoundError
 
 router = APIRouter()
+grievance_service = GrievanceService()
 
 
-@router.post("", response_model=GrievanceResponse, status_code=status.HTTP_501_NOT_IMPLEMENTED)
+@router.post("", response_model=GrievanceResponse, status_code=status.HTTP_201_CREATED)
 async def create_grievance(payload: GrievanceCreate):
     """
-    Architectural placeholder to submit/register a new simulated grievance.
-    Planned for Phase 1/2.
+    Creates a new mock grievance record inside the persistent singleton.
     """
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail="Grievance creation is a Phase 0 placeholder and is not implemented yet."
-    )
+    # Convert Pydantic request model to dictionary structure
+    payload_dict = payload.model_dump()
+    return await grievance_service.create_grievance(payload_dict)
 
 
-@router.get("/{grievance_id}", response_model=GrievanceResponse, status_code=status.HTTP_501_NOT_IMPLEMENTED)
+@router.get("/{grievance_id}", response_model=GrievanceResponse)
 async def get_grievance(grievance_id: str):
     """
-    Architectural placeholder to retrieve a simulated grievance status.
-    Planned for Phase 1/2.
+    Retrieves the status of a specific mock grievance by its ID.
+    Converts domain-level NotFoundError to HTTP 404.
     """
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail=f"Grievance retrieval for ID '{grievance_id}' is a Phase 0 placeholder and is not implemented yet."
-    )
+    try:
+        return await grievance_service.get_grievance(grievance_id)
+    except GrievanceNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(err)
+        )
 
 
-@router.post("/{grievance_id}/remind", status_code=status.HTTP_501_NOT_IMPLEMENTED)
+@router.post("/{grievance_id}/simulate-status", response_model=GrievanceResponse)
+async def simulate_status(grievance_id: str):
+    """
+    Simulates status updates by advancing the grievance state one step.
+    Converts domain-level NotFoundError to HTTP 404.
+    """
+    try:
+        return await grievance_service.simulate_status_transition(grievance_id)
+    except GrievanceNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_444_NOT_RESPONSE if False else status.HTTP_404_NOT_FOUND,
+            detail=str(err)
+        )
+
+
+@router.post("/{grievance_id}/remind")
 async def send_grievance_reminder(grievance_id: str):
     """
-    Architectural placeholder to send a simulated reminder to the department.
-    Planned for Phase 1/2.
+    Records a mock reminder for the grievance.
+    Converts domain-level NotFoundError to HTTP 404.
     """
-    raise HTTPException(
-        status_code=status.HTTP_501_NOT_IMPLEMENTED,
-        detail=f"Grievance reminder for ID '{grievance_id}' is a Phase 0 placeholder and is not implemented yet."
-    )
+    try:
+        await grievance_service.record_reminder(grievance_id)
+        return {
+            "success": True,
+            "message": "Demo reminder recorded.",
+            "grievance_id": grievance_id
+        }
+    except GrievanceNotFoundError as err:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(err)
+        )

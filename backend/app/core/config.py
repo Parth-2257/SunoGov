@@ -10,8 +10,8 @@ class Settings(BaseSettings):
     PORT: int = 8000
     HOST: str = "0.0.0.0"
     
-    # CORS Origins (Allow all for hackathon prototyping, can be restricted later)
-    BACKEND_CORS_ORIGINS: List[str] = ["*"]
+    # CORS Origins (Restricted for security, no wildcard '*' in production/development settings)
+    BACKEND_CORS_ORIGINS: List[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
     
     # Future integrations (Optional in Phase 0)
     OPENAI_API_KEY: str | None = None
