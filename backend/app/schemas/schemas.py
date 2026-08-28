@@ -15,11 +15,11 @@ class RequestType(str, Enum):
 
 
 class GrievanceStatus(str, Enum):
-    DRAFT = "DRAFT"
     SUBMITTED = "SUBMITTED"
-    IN_PROGRESS = "IN_PROGRESS"
+    ACKNOWLEDGED = "ACKNOWLEDGED"
+    UNDER_REVIEW = "UNDER_REVIEW"
+    REGIONAL_REVIEW = "REGIONAL_REVIEW"
     RESOLVED = "RESOLVED"
-    REJECTED = "REJECTED"
 
 
 # ==========================================
@@ -67,26 +67,27 @@ class AnalysisResponse(BaseModel):
 
 
 class GrievanceCreate(BaseModel):
-    citizen_name: str = Field(..., min_length=2)
-    contact_number: str = Field(..., min_length=10, max_length=15)
-    email: Optional[str] = None
-    uan: str = Field(..., min_length=12, max_length=12, description="12-digit Universal Account Number")
-    category: str = Field(..., description="EPFO category, e.g., 'Pension', 'Withdrawal'")
-    description: str = Field(..., min_length=10)
+    request_type: RequestType
+    intent: str
+    summary: str
+    category: str
+    description: str
+    uan: str = Field(..., min_length=2, max_length=30, description="Synthetic UAN identifier")
 
 
 class GrievanceResponse(BaseModel):
     id: str
-    citizen_name: str
-    contact_number: str
-    email: Optional[str] = None
-    uan: str
+    request_type: RequestType
+    intent: str
+    summary: str
     category: str
     description: str
+    uan: str
     status: GrievanceStatus
     created_at: str
     updated_at: str
-    reminders_sent: int = 0
+    is_demo: bool = True
+    last_reminded_at: Optional[str] = None
 
 
 class ResourceItem(BaseModel):
