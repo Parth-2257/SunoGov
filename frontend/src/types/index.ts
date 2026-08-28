@@ -1,6 +1,6 @@
 export type RequestType = 'GRIEVANCE' | 'INFORMATION' | 'STATUS' | 'UNKNOWN';
 
-export type GrievanceStatus = 'DRAFT' | 'SUBMITTED' | 'IN_PROGRESS' | 'RESOLVED' | 'REJECTED';
+export type GrievanceStatus = 'SUBMITTED' | 'ACKNOWLEDGED' | 'UNDER_REVIEW' | 'REGIONAL_REVIEW' | 'RESOLVED';
 
 export interface MissingField {
   field_name: string;
@@ -25,16 +25,17 @@ export interface AIAnalysis {
 
 export interface Grievance {
   id: string;
-  citizen_name: string;
-  contact_number: string;
-  email?: string;
-  uan: string;
+  request_type: RequestType;
+  intent: string;
+  summary: string;
   category: string;
   description: string;
+  uan: string;
   status: GrievanceStatus;
   created_at: string;
   updated_at: string;
-  reminders_sent: number;
+  is_demo: boolean;
+  last_reminded_at?: string | null;
 }
 
 export interface ResourceItem {

@@ -58,17 +58,18 @@ export const MOCK_SCENARIOS: DemoScenario[] = [
 
 export const MOCK_GRIEVANCES: Grievance[] = [
   {
-    id: 'GRV-88271A',
-    citizen_name: 'Vikram Seth',
-    contact_number: '+919988776655',
-    email: 'vikram.seth@example.com',
-    uan: '100123456789',
-    category: 'Withdrawal',
+    id: 'SG-2026-88271',
+    request_type: 'GRIEVANCE',
+    intent: 'DEMO_PF_TRANSFER_DELAY',
+    summary: 'PF transfer pending for approximately 3 months.',
+    category: 'DEMO_PF_TRANSFER_CATEGORY',
     description: 'Form 31 claim submitted for medical emergency is stuck for 3 weeks.',
-    status: 'IN_PROGRESS',
+    uan: 'DEMO-123456',
+    status: 'UNDER_REVIEW',
     created_at: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
     updated_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    reminders_sent: 1
+    is_demo: true,
+    last_reminded_at: null
   }
 ];
 
