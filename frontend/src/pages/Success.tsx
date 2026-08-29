@@ -6,6 +6,7 @@ import { Button } from '../components/ui/Button';
 import { Badge } from '../components/ui/Badge';
 import { CheckCircle2, Copy, FileText, Info } from 'lucide-react';
 
+// Success page layout designed to show reference IDs clearly
 export const Success: React.FC = () => {
   const navigate = useNavigate();
   const { refId, analysis, uan, rawInput } = useSunoGov();
