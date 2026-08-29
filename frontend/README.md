@@ -56,3 +56,7 @@ frontend/
 * **Accessible Inputs & Buttons**: All inputs are labeled, announce validation errors via `aria-describedby` alerts, and enforce a minimum vertical touch region of `44px` for touch accessibility.
 * **Custom Keyboard Focus**: All clickable layout items feature custom `:focus-visible` focus rings (using the primary theme color).
 * **Brand Protection**: Visual styling avoids copying official EPFO or Indian Government headers, emblems, colors, and slogans.
+
+
+### Production Builds
+Run `npm run build` to compile the app to the static `dist/` directory.
