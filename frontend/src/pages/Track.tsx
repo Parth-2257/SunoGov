@@ -8,6 +8,7 @@ import { ArrowLeft, Check, Circle, Info, Loader2, AlertCircle, Bell, Sparkles } 
 import { apiService } from '../services/api';
 import { GrievanceStatus } from '../types';
 
+// Tracking interface representing ticket checkpoints
 export const Track: React.FC = () => {
   const navigate = useNavigate();
   const { refId, grievance, updateGrievance, resetJourney } = useSunoGov();
