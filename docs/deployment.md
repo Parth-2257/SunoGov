@@ -58,3 +58,5 @@ The frontend contains a `vercel.json` file under `frontend/vercel.json` that Ver
 
 ## Troubleshooting Local Port Bindings
 If the FastAPI app fails to bind to `8000`, check for other running instances using `lsof -i :8000` and stop them.
+
+Note: Always match `BACKEND_CORS_ORIGINS` to Vercel custom domains to prevent request rejections.
