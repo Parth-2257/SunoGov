@@ -54,3 +54,7 @@ Deploy the React/TypeScript/Vite frontend application to **Vercel**:
 
 ### SPA Routing Support
 The frontend contains a `vercel.json` file under `frontend/vercel.json` that Vercel automatically processes. This routes all browser pathways back to `index.html` to prevent 404 errors during direct navigation or browser refresh actions.
+
+
+## Troubleshooting Local Port Bindings
+If the FastAPI app fails to bind to `8000`, check for other running instances using `lsof -i :8000` and stop them.
