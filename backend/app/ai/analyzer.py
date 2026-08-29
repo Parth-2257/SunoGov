@@ -86,3 +86,32 @@ class AIAnalyzer:
             confidence=min(detected_confidence, 0.30),
             missing_fields=[]
         )
+
+    async def classify_boolean(self, text: str) -> AIAnalysisSchema:
+        """
+        Performs semantic yes/no classification on ambiguous user confirmation responses.
+        """
+        try:
+            if hasattr(self.provider, "classify_boolean"):
+                answer = await self.provider.classify_boolean(text)
+            else:
+                answer = "AMBIGUOUS"
+                
+            return AIAnalysisSchema(
+                request_type=AIRequestType.UNKNOWN,
+                intent=AIIntent.UNKNOWN,
+                language="english",
+                summary=answer,
+                confidence=1.0,
+                missing_fields=[]
+            )
+        except Exception as err:
+            logger.error("Event: AI Boolean Classification Exception | Error: %s", str(err))
+            return AIAnalysisSchema(
+                request_type=AIRequestType.UNKNOWN,
+                intent=AIIntent.UNKNOWN,
+                language="english",
+                summary="AMBIGUOUS",
+                confidence=0.5,
+                missing_fields=[]
+            )

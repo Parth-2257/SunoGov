@@ -19,6 +19,47 @@ import {
 } from 'lucide-react';
 import { SpeechService, SpeechState } from '../services/speech';
 import { ChatMessage } from '../types';
+import { apiService } from '../services/api';
+
+// Helper to normalize and interpret affirmative/negative replies deterministically
+export const interpretSemanticAnswer = (text: string): 'YES' | 'NO' | 'AMBIGUOUS' => {
+  const normalized = text.toLowerCase().trim().replace(/[.,/#!$%^&*;:{}=\-_`~()]/g, "");
+
+  const obviousYes = [
+    'yes', 'y', 'yeah', 'yep', 'sure', 'okay', 'ok', 'correct', 'right',
+    'haan', 'ha', 'han', 'ji', 'bilkul',
+    'yes i have it', 'yes i have one', 'i have it', 'i do'
+  ];
+
+  const obviousNo = [
+    'no', 'n', 'nope', 'nah', 'not really', 'i dont', 'i do not',
+    'nahi', 'nahin', 'nahi hai', 'no i dont', 'i dont have one', 'i dont have it'
+  ];
+
+  if (obviousYes.includes(normalized)) {
+    return 'YES';
+  }
+  if (obviousNo.includes(normalized)) {
+    return 'NO';
+  }
+
+  // Substring / regex matching for common simple affirmative/negative phrases
+  const yesRegex = /^(yes|yeah|yep|y|haan|ha|han|ji|correct|right|i do|sure|ok|okay|ha\s*han|haan\s*ji|ji\s*haan)$/i;
+  const noRegex = /^(no|nope|nah|n|nahi|nahin|nahi\s*hai|i\s*dont|dont|don't)$/i;
+
+  if (yesRegex.test(normalized)) return 'YES';
+  if (noRegex.test(normalized)) return 'NO';
+
+  // Check prefix / suffix
+  if (normalized.startsWith('yes ') || normalized.startsWith('haan ') || normalized.includes('have it') || normalized.includes('have one') || normalized.startsWith('ji ')) {
+    return 'YES';
+  }
+  if (normalized.startsWith('no ') || normalized.startsWith('nahi ') || normalized.includes('dont have') || normalized.includes('do not have') || normalized.includes('nahi hai')) {
+    return 'NO';
+  }
+
+  return 'AMBIGUOUS';
+};
 
 export const Report: React.FC = () => {
   const navigate = useNavigate();
@@ -43,6 +84,9 @@ export const Report: React.FC = () => {
 
   const [composerText, setComposerText] = useState('');
   const [isAskingOptionalYesNo, setIsAskingOptionalYesNo] = useState(false);
+  const [isWaitingForFieldValue, setIsWaitingForFieldValue] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [activeQuickReplyId, setActiveQuickReplyId] = useState<string | null>(null);
   const [uanHelpOpen, setUanHelpOpen] = useState(false);
   
   // Speech states
@@ -115,7 +159,7 @@ export const Report: React.FC = () => {
   useEffect(() => {
     if (messages.length === 0) {
       const greeting: ChatMessage = {
-        id: 'init',
+        id: 'init-' + Date.now(),
         sender: 'assistant',
         text: "Hello! Tell me what happened. You can type or speak in English, Hindi, or Marathi.",
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -124,7 +168,7 @@ export const Report: React.FC = () => {
       if (rawInput) {
         // Came from scenario selection
         const userMsg: ChatMessage = {
-          id: 'user-scenario',
+          id: 'user-scenario-' + Date.now(),
           sender: 'user',
           text: rawInput,
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -160,14 +204,16 @@ export const Report: React.FC = () => {
     
     if (idx >= fields.length) {
       // All parameters collected successfully
+      const reviewMsgId = 'finish-' + Date.now();
       const reviewMsg: ChatMessage = {
-        id: 'finish-' + Date.now(),
+        id: reviewMsgId,
         sender: 'assistant',
         text: "Thank you. I have collected all the details needed to prepare your request.",
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         type: 'quick_reply',
         options: ['Review request']
       };
+      setActiveQuickReplyId(reviewMsgId);
       setMessages(prev => [...prev, reviewMsg]);
       return;
     }
@@ -175,16 +221,21 @@ export const Report: React.FC = () => {
     const nextField = fields[idx];
     if (nextField.required === false) {
       setIsAskingOptionalYesNo(true);
+      setIsWaitingForFieldValue(false);
+      const yesNoId = 'yesno-' + Date.now();
       const yesNoMsg: ChatMessage = {
-        id: 'yesno-' + Date.now(),
+        id: yesNoId,
         sender: 'assistant',
         text: `Do you have a ${nextField.field_name.replace(/_/g, ' ')}?`,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         type: 'quick_reply',
         options: ['Yes', 'No']
       };
+      setActiveQuickReplyId(yesNoId);
       setMessages(prev => [...prev, yesNoMsg]);
     } else {
+      setIsAskingOptionalYesNo(false);
+      setIsWaitingForFieldValue(false);
       const askMsg: ChatMessage = {
         id: 'ask-' + Date.now(),
         sender: 'assistant',
@@ -197,8 +248,8 @@ export const Report: React.FC = () => {
 
   // Confirm understanding handler
   const handleConfirmUnderstanding = () => {
-    if (!analysis) return;
-    
+    if (!analysis || isProcessing) return;
+
     // Simulate user confirmation message
     const userConfirmMsg: ChatMessage = {
       id: 'user-confirm-' + Date.now(),
@@ -211,14 +262,16 @@ export const Report: React.FC = () => {
     const reqType = analysis.request_type;
 
     if (reqType === 'INFORMATION') {
+      const infoMsgId = 'info-redirect-' + Date.now();
       const infoMsg: ChatMessage = {
-        id: 'info-redirect-' + Date.now(),
+        id: infoMsgId,
         sender: 'assistant',
         text: "Since this is an informational query, I will guide you to our official resources catalog.",
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         type: 'quick_reply',
         options: ['View resources guide']
       };
+      setActiveQuickReplyId(infoMsgId);
       setMessages(prev => [...prev, infoMsg]);
     } else if (reqType === 'STATUS') {
       // Prompt for grievance tracking ID
@@ -231,14 +284,16 @@ export const Report: React.FC = () => {
       setMessages(prev => [...prev, statusMsg]);
     } else if (reqType === 'UNKNOWN') {
       // Clarification prompt options
+      const clarifyId = 'clarify-' + Date.now();
       const clarificationMsg: ChatMessage = {
-        id: 'clarify-' + Date.now(),
+        id: clarifyId,
         sender: 'assistant',
         text: "I want to make sure I understand your issue. What would you like help with?",
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         type: 'quick_reply',
         options: ['PF Transfer', 'PF Claim', 'Pension', 'Grievance Status', 'Something else']
       };
+      setActiveQuickReplyId(clarifyId);
       setMessages(prev => [...prev, clarificationMsg]);
     } else {
       // GRIEVANCE: Ask missing fields
@@ -249,11 +304,16 @@ export const Report: React.FC = () => {
 
   // Submit composer text input
   const handleSendText = async (text: string) => {
-    if (!text.trim()) return;
+    if (!text.trim() || isProcessing) return;
+
+    // Clear active quick replies
+    setActiveQuickReplyId(null);
+    setIsProcessing(true);
 
     // Add user message to history
+    const userMsgId = 'user-' + Date.now();
     const userMsg: ChatMessage = {
-      id: 'user-' + Date.now(),
+      id: userMsgId,
       sender: 'user',
       text: text,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -265,6 +325,7 @@ export const Report: React.FC = () => {
     if (!analysis) {
       setRawInput(text);
       await triggerMockAnalysis(text);
+      setIsProcessing(false);
       return;
     }
 
@@ -272,6 +333,19 @@ export const Report: React.FC = () => {
 
     // Case 2: Status check flow
     if (reqType === 'STATUS') {
+      const semanticAns = interpretSemanticAnswer(text);
+      if (semanticAns === 'YES' || semanticAns === 'NO') {
+        const errorMsg: ChatMessage = {
+          id: 'status-error-' + Date.now(),
+          sender: 'assistant',
+          text: "Please enter your grievance reference ID to track your status.",
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages(prev => [...prev, errorMsg]);
+        setIsProcessing(false);
+        return;
+      }
+
       setRefId(text);
       const ackMsg: ChatMessage = {
         id: 'ack-status-' + Date.now(),
@@ -283,6 +357,7 @@ export const Report: React.FC = () => {
       setTimeout(() => {
         navigate('/track');
       }, 1200);
+      setIsProcessing(false);
       return;
     }
 
@@ -290,6 +365,7 @@ export const Report: React.FC = () => {
     if (reqType === 'UNKNOWN') {
       setRawInput(text);
       await triggerMockAnalysis(text);
+      setIsProcessing(false);
       return;
     }
 
@@ -301,15 +377,33 @@ export const Report: React.FC = () => {
         
         // Handling optional Yes/No quick replies
         if (activeField.required === false && isAskingOptionalYesNo) {
-          const lowerAns = text.toLowerCase().trim();
-          if (lowerAns === 'no' || lowerAns === 'n' || lowerAns === 'skip') {
+          // Layered interpretation: Local check first
+          let semanticAns = interpretSemanticAnswer(text);
+          
+          // Call OpenRouter if ambiguous
+          if (semanticAns === 'AMBIGUOUS') {
+            try {
+              const response = await apiService.analyzeRequest(text, 'BOOLEAN');
+              if (response.success && response.analysis) {
+                const ans = response.analysis.summary.toUpperCase().trim();
+                if (ans === 'YES' || ans === 'NO') {
+                  semanticAns = ans as 'YES' | 'NO';
+                }
+              }
+            } catch (err) {
+              // Ignore error, keep ambiguous
+            }
+          }
+
+          if (semanticAns === 'NO') {
             setIsAskingOptionalYesNo(false);
             setCollectedFields(prev => ({ ...prev, [activeField.field_name]: 'Not provided' }));
             const nextIdx = currentQuestionIndex + 1;
             setCurrentQuestionIndex(nextIdx);
             askQuestionForIndex(nextIdx);
-          } else {
+          } else if (semanticAns === 'YES') {
             setIsAskingOptionalYesNo(false);
+            setIsWaitingForFieldValue(true); // Now wait for the value
             const promptValueMsg: ChatMessage = {
               id: 'prompt-val-' + Date.now(),
               sender: 'assistant',
@@ -317,17 +411,57 @@ export const Report: React.FC = () => {
               timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
             };
             setMessages(prev => [...prev, promptValueMsg]);
+          } else {
+            // Still ambiguous: repeat question
+            const repeatId = 'repeat-' + Date.now();
+            const repeatMsg: ChatMessage = {
+              id: repeatId,
+              sender: 'assistant',
+              text: `I want to make sure I understood. Do you have a ${activeField.field_name.replace(/_/g, ' ')}?`,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              type: 'quick_reply',
+              options: ['Yes', 'No']
+            };
+            setActiveQuickReplyId(repeatId);
+            setMessages(prev => [...prev, repeatMsg]);
           }
+          setIsProcessing(false);
+          return;
+        }
+
+        // Validate values (UAN or REFERENCE_ID)
+        const semanticAns = interpretSemanticAnswer(text);
+        if ((isWaitingForFieldValue || activeField.required) && (semanticAns === 'YES' || semanticAns === 'NO')) {
+          const rejectMsg: ChatMessage = {
+            id: 'reject-' + Date.now(),
+            sender: 'assistant',
+            text: `Please enter the actual value for your ${activeField.field_name.replace(/_/g, ' ')}, not "yes" or "no".`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          };
+          setMessages(prev => [...prev, rejectMsg]);
+          setIsProcessing(false);
           return;
         }
 
         // Specifically set the UAN parameter globally
         if (activeField.field_name === 'uan') {
+          if (text.trim().length < 3) {
+            const errorMsg: ChatMessage = {
+              id: 'uan-error-' + Date.now(),
+              sender: 'assistant',
+              text: "Please enter a valid mock UAN value (e.g. DEMO-1234).",
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            setMessages(prev => [...prev, errorMsg]);
+            setIsProcessing(false);
+            return;
+          }
           setUan(text);
         }
 
         // Store value
         setCollectedFields(prev => ({ ...prev, [activeField.field_name]: text }));
+        setIsWaitingForFieldValue(false);
 
         // Move to next question
         const nextIdx = currentQuestionIndex + 1;
@@ -335,10 +469,14 @@ export const Report: React.FC = () => {
         askQuestionForIndex(nextIdx);
       }
     }
+
+    setIsProcessing(false);
   };
 
   // Quick reply option clicks
   const handleQuickReplyClick = (option: string) => {
+    if (isProcessing) return;
+
     // 1. Direct Page Navigations
     if (option === 'Review request') {
       navigate('/review');
@@ -459,6 +597,7 @@ export const Report: React.FC = () => {
                       <Button
                         variant="outline"
                         size="sm"
+                        disabled={isProcessing}
                         onClick={handleEditOriginalQuery}
                         className="flex-1 gap-1 border-neutral-300 font-bold text-xs"
                       >
@@ -468,6 +607,7 @@ export const Report: React.FC = () => {
                       <Button
                         variant="primary"
                         size="sm"
+                        disabled={isProcessing}
                         onClick={handleConfirmUnderstanding}
                         className="flex-1 font-bold text-xs shadow-sm"
                       >
@@ -501,14 +641,15 @@ export const Report: React.FC = () => {
                   </div>
                 )}
 
-                {/* Quick Reply Selection Buttons */}
-                {msg.type === 'quick_reply' && msg.options && (
+                {/* Quick Reply Selection Buttons (only for active question, disabled if processing) */}
+                {msg.type === 'quick_reply' && msg.options && msg.id === activeQuickReplyId && (
                   <div className="flex flex-wrap gap-2 pt-2">
                     {msg.options.map((opt) => (
                       <button
                         key={opt}
+                        disabled={isProcessing}
                         onClick={() => handleQuickReplyClick(opt)}
-                        className="px-4 py-1.5 rounded-full bg-white border border-primary-200 hover:bg-primary-50 text-xs font-bold text-primary-600 transition-colors shadow-sm focus:ring-2 focus:ring-primary-500"
+                        className="px-4 py-1.5 rounded-full bg-white border border-primary-200 hover:bg-primary-50 disabled:bg-neutral-100 disabled:text-neutral-400 text-xs font-bold text-primary-600 transition-colors shadow-sm focus:ring-2 focus:ring-primary-500"
                       >
                         {opt}
                       </button>
@@ -524,14 +665,14 @@ export const Report: React.FC = () => {
         ))}
 
         {/* Loading/Inference Spinner bubble */}
-        {isAnalyzing && (
+        {(isAnalyzing || isProcessing) && (
           <div className="flex justify-start">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-neutral-500">
                 <Loader2 className="w-4 h-4 animate-spin" />
               </div>
               <div className="bg-neutral-100 rounded-xl p-3 text-xs font-bold text-neutral-500 animate-pulse">
-                Understanding your request…
+                Understanding your response…
               </div>
             </div>
           </div>
@@ -634,9 +775,9 @@ export const Report: React.FC = () => {
             <input
               type="text"
               value={composerText}
-              disabled={isAnalyzing || speechState === 'LISTENING' || speechState === 'TRANSCRIBING'}
+              disabled={isAnalyzing || isProcessing || speechState === 'LISTENING' || speechState === 'TRANSCRIBING'}
               onChange={(e) => setComposerText(e.target.value)}
-              placeholder={isAnalyzing ? "Processing..." : "Type your message..."}
+              placeholder={(isAnalyzing || isProcessing) ? "Processing..." : "Type your message..."}
               className="block w-full rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-sm placeholder-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:bg-neutral-100"
             />
           </div>
@@ -645,7 +786,7 @@ export const Report: React.FC = () => {
           <button
             type="button"
             onClick={handleMicClick}
-            disabled={isAnalyzing || speechState === 'TRANSCRIBING'}
+            disabled={isAnalyzing || isProcessing || speechState === 'TRANSCRIBING'}
             className={`p-2.5 rounded-lg border focus:ring-2 focus:ring-primary-500 focus:outline-none ${
               speechState === 'LISTENING' 
                 ? 'bg-red-500 border-red-500 text-white' 
@@ -659,7 +800,7 @@ export const Report: React.FC = () => {
           {/* Send text button */}
           <button
             type="submit"
-            disabled={!composerText.trim() || isAnalyzing || speechState === 'LISTENING'}
+            disabled={!composerText.trim() || isAnalyzing || isProcessing || speechState === 'LISTENING'}
             className="p-2.5 rounded-lg bg-primary-600 border border-primary-600 text-white hover:bg-primary-700 disabled:bg-neutral-300 disabled:border-neutral-300 disabled:cursor-not-allowed focus:ring-2 focus:ring-primary-500 focus:outline-none"
             aria-label="Send message"
           >

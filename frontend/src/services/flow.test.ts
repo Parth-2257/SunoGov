@@ -1,4 +1,5 @@
 import { AIAnalysis, RequestType } from '../types';
+import { interpretSemanticAnswer } from '../pages/Report';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) throw new Error(`Assertion failed: ${msg}`);
@@ -34,7 +35,9 @@ export function runFlowTests() {
       missing_fields: mockApiResponse.analysis.missing_fields.map(f => ({
         field_name: f.field,
         field_type: 'string',
-        description: f.reason
+        description: f.reason,
+        required: true,
+        question: "Please enter your UAN."
       })),
       summary: mockApiResponse.analysis.summary,
       confidence: mockApiResponse.analysis.confidence
@@ -86,6 +89,56 @@ export function runFlowTests() {
     assert(mapIntentToCategory('UNKNOWN') === 'DEMO_GENERAL_CATEGORY', "Should map generic fallback intents.");
 
     console.log("Test 3: Grievance category mapper verification passed.");
+  }
+
+  // 4. Verify Semantic Yes/No Normalizer
+  {
+    const testYesPhrases = [
+      'yes', 'Yes', 'y', 'yeah', 'yep', 'sure', 'okay', 'ok', 'correct', 'right',
+      'haan', 'ha', 'han', 'ji', 'bilkul', 'yes I have it', 'yes, I have one', 'I have it', 'I do'
+    ];
+    for (const phrase of testYesPhrases) {
+      assert(interpretSemanticAnswer(phrase) === 'YES', `Should classify "${phrase}" as YES`);
+    }
+
+    const testNoPhrases = [
+      'no', 'No', 'NO', 'n', 'nope', 'nah', 'not really', "I don't", 'I do not',
+      'nahi', 'nahin', 'nahi hai', "no I don't", "I don't have one", "I don't have it"
+    ];
+    for (const phrase of testNoPhrases) {
+      assert(interpretSemanticAnswer(phrase) === 'NO', `Should classify "${phrase}" as NO`);
+    }
+
+    const ambiguousPhrases = [
+      'I received something but not sure', 'maybe', 'not yet', 'some reference ID'
+    ];
+    for (const phrase of ambiguousPhrases) {
+      assert(interpretSemanticAnswer(phrase) === 'AMBIGUOUS', `Should classify "${phrase}" as AMBIGUOUS`);
+    }
+
+    console.log("Test 4: Semantic Yes/No normalizer checks passed.");
+  }
+
+  // 5. Verify Rejecting Boolean Values for Identifiers (e.g. UAN, Reference ID)
+  {
+    const validateFieldInput = (fieldName: string, value: string): boolean => {
+      const semanticAns = interpretSemanticAnswer(value);
+      if (semanticAns === 'YES' || semanticAns === 'NO') {
+        return false; // Reject yes/no answers for text fields
+      }
+      if (fieldName === 'uan' && value.trim().length < 3) {
+        return false;
+      }
+      return true;
+    };
+
+    assert(validateFieldInput('uan', 'DEMO-1234') === true, "Should accept valid UAN");
+    assert(validateFieldInput('uan', 'yes') === false, "Should reject yes as UAN");
+    assert(validateFieldInput('uan', 'no') === false, "Should reject no as UAN");
+    assert(validateFieldInput('transfer_reference_number', 'TRF-12345') === true, "Should accept valid reference number");
+    assert(validateFieldInput('transfer_reference_number', 'haan') === false, "Should reject haan as reference ID");
+
+    console.log("Test 5: Rejecting boolean values for identifier inputs passed.");
   }
 
   console.log("All SunoGov User Flow Integration tests passed successfully!");

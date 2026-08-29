@@ -10,9 +10,13 @@ analyzer = AIAnalyzer()
 async def analyze_request(payload: AnalysisRequest):
     """
     Analyzes natural language text from a citizen to determine intent, request type,
-    language, summary, and missing details. Uses MockAIProvider in Phase 3A.
+    language, summary, and missing details. If context_type is 'BOOLEAN', executes
+    a yes/no semantic classification helper.
     """
-    result = await analyzer.analyze_query(payload.text)
+    if payload.context_type == "BOOLEAN":
+        result = await analyzer.classify_boolean(payload.text)
+    else:
+        result = await analyzer.analyze_query(payload.text)
     
     return AnalysisResponse(
         success=True,

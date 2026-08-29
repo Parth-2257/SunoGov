@@ -59,7 +59,8 @@ class AIAnalysis(BaseModel):
 # ==========================================
 
 class AnalysisRequest(BaseModel):
-    text: str = Field(..., min_length=5, description="The natural language query from the citizen")
+    text: str = Field(..., min_length=1, description="The natural language query from the citizen")
+    context_type: Optional[str] = Field(default=None, description="Optional context type, e.g. 'BOOLEAN'")
 
 
 class AnalysisResponse(BaseModel):

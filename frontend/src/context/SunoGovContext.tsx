@@ -22,7 +22,7 @@ interface SunoGovContextType {
   status: GrievanceStatus | null;
   setStatus: (val: GrievanceStatus | null) => void;
   resetJourney: () => void;
-  triggerMockAnalysis: (text: string) => Promise<void>;
+  triggerMockAnalysis: (text: string, contextType?: string) => Promise<void>;
   updateGrievance: (newGrievance: Grievance | null) => void;
   isAnalyzing: boolean;
   analysisError: string | null;
@@ -64,13 +64,13 @@ export const SunoGovProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   // Triggers real API analysis request targeting FastAPI backend
-  const triggerMockAnalysis = async (text: string) => {
+  const triggerMockAnalysis = async (text: string, contextType?: string) => {
     setIsAnalyzing(true);
     setAnalysisError(null);
     try {
       // Safe trim of the simulated prototype transcript tags if prefixed
       const cleanText = text.replace(/^\[DEMO TRANSCRIPT\]\s*/i, '');
-      const response = await apiService.analyzeRequest(cleanText);
+      const response = await apiService.analyzeRequest(cleanText, contextType);
       
       if (response.success && response.analysis) {
         const result = response.analysis;

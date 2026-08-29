@@ -83,3 +83,63 @@ class OpenRouterProvider(AIProvider):
         except Exception as err:
             logger.error("Event: OpenRouter Output Validation Exception | Error: %s", str(err))
             raise OpenRouterInferenceError("Model output failed schema validation constraint checks.") from err
+
+    async def classify_boolean(self, text: str) -> str:
+        """
+        Interprets natural language responses to determine if they indicate a YES, NO, or are AMBIGUOUS.
+        """
+        # Configuration keys check
+        if not settings.OPENROUTER_API_KEY or settings.OPENROUTER_API_KEY == "YOUR_OPENROUTER_API_KEY":
+            logger.warning("Event: OpenRouter API key missing for boolean check. Fallback to AMBIGUOUS.")
+            return "AMBIGUOUS"
+
+        headers = {
+            "Authorization": f"Bearer {settings.OPENROUTER_API_KEY}",
+            "Content-Type": "application/json",
+            "HTTP-Referer": "https://github.com/Parth-2257/SunoGov",
+            "X-Title": "SunoGov Hackathon Prototype"
+        }
+
+        system_prompt = (
+            "You are SunoGov's semantic answer classifier.\n"
+            "Your task is to classify whether a user's natural language response represents a YES or NO to a confirmation question, or is AMBIGUOUS.\n\n"
+            "Output a single JSON object containing exactly:\n"
+            "{\n  \"answer\": \"YES\" | \"NO\" | \"AMBIGUOUS\"\n}\n\n"
+            "Examples:\n"
+            "- \"Haan mere paas hai\" -> YES\n"
+            "- \"Yes, I have it\" -> YES\n"
+            "- \"Nahi hai\" -> NO\n"
+            "- \"No, I don't think so\" -> NO\n"
+            "- \"I received something from my previous employer but I'm not sure if that's it\" -> AMBIGUOUS\n"
+            "- \"EPFO claim is pending\" -> AMBIGUOUS"
+        )
+
+        payload = {
+            "model": settings.OPENROUTER_MODEL,
+            "messages": [
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": text}
+            ],
+            "response_format": {"type": "json_object"},
+            "temperature": 0.0
+        }
+
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{settings.OPENROUTER_BASE_URL.rstrip('/')}/chat/completions",
+                    headers=headers,
+                    json=payload,
+                    timeout=8.0
+                )
+                response.raise_for_status()
+                response_json = response.json()
+                content = response_json["choices"][0]["message"]["content"]
+                parsed_data = json.loads(content)
+                ans = parsed_data.get("answer", "AMBIGUOUS").upper().strip()
+                if ans in ["YES", "NO", "AMBIGUOUS"]:
+                    return ans
+                return "AMBIGUOUS"
+        except Exception as err:
+            logger.error("Event: OpenRouter Boolean Check Exception | Details: %s", str(err))
+            return "AMBIGUOUS"

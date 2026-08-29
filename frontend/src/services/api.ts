@@ -33,11 +33,11 @@ export const apiService = {
   /**
    * AI Analysis request
    */
-  async analyzeRequest(text: string): Promise<{ success: boolean; analysis: any }> {
+  async analyzeRequest(text: string, contextType?: string): Promise<{ success: boolean; analysis: any }> {
     const response = await fetch(`${API_BASE_URL}/analyze`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, context_type: contextType }),
     });
     return handleResponse<{ success: boolean; analysis: any }>(response);
   },

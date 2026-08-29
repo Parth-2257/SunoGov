@@ -154,3 +154,17 @@ class MockAIProvider(AIProvider):
                 confidence=0.30,
                 missing_fields=[]
             )
+
+    async def classify_boolean(self, text: str) -> str:
+        """
+        Classifies semantic boolean text deterministically for testing and offline scenarios.
+        """
+        clean = text.lower().strip()
+        
+        # Test Case matching phrases
+        if any(w in clean for w in ["yes", "haan", "yep", "yeah", "ok", "correct", "i do"]):
+            return "YES"
+        if any(w in clean for w in ["no", "nahi", "nope", "nah", "don't", "dont"]):
+            return "NO"
+            
+        return "AMBIGUOUS"
