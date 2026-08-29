@@ -1,5 +1,5 @@
 import { AIAnalysis, RequestType } from '../types';
-import { interpretSemanticAnswer } from '../pages/Report';
+import { interpretSemanticAnswer } from '../utils/interpreter';
 
 function assert(condition: boolean, msg: string) {
   if (!condition) throw new Error(`Assertion failed: ${msg}`);
