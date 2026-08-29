@@ -122,6 +122,7 @@ const FALLBACK_RESOURCES: ResourceItem[] = [
   }
 ];
 
+// Resources directory featuring searchable citizen guidance
 export const Resources: React.FC = () => {
   const location = useLocation();
   const navigate = useNavigate();
