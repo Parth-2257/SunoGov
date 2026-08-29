@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.routes import health, analyze, grievances, resources
 
+# FastAPI web framework application root
 app = FastAPI(
     title=settings.PROJECT_NAME,
     description="SunoGov API - Phase 0 Foundation",
