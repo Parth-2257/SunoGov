@@ -8,6 +8,7 @@ export default {
     extend: {
       colors: {
         primary: {
+          // Saffron orange primary scheme for public-service portal look
           50: '#fffdfb',
           100: '#fff3e0',
           200: '#ffe0b2',
