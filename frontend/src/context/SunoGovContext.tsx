@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState } from 'react';
-import { AIAnalysis, Grievance, GrievanceStatus } from '../types';
+import { AIAnalysis, Grievance, GrievanceStatus, ChatMessage } from '../types';
 import { apiService } from '../services/api';
 
 export type SubStepType = 'input' | 'understanding' | 'info' | 'readiness';
@@ -26,6 +26,14 @@ interface SunoGovContextType {
   updateGrievance: (newGrievance: Grievance | null) => void;
   isAnalyzing: boolean;
   analysisError: string | null;
+  
+  // Conversational Interface states
+  messages: ChatMessage[];
+  setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>;
+  collectedFields: Record<string, string>;
+  setCollectedFields: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  currentQuestionIndex: number;
+  setCurrentQuestionIndex: (idx: number) => void;
 }
 
 const SunoGovContext = createContext<SunoGovContextType | undefined>(undefined);
@@ -43,6 +51,11 @@ export const SunoGovProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Asynchronous API load states
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
+
+  // Conversational state variables
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [collectedFields, setCollectedFields] = useState<Record<string, string>>({});
+  const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(-1);
 
   const updateGrievance = (newGrievance: Grievance | null) => {
     setGrievance(newGrievance);
@@ -76,7 +89,9 @@ export const SunoGovProvider: React.FC<{ children: React.ReactNode }> = ({ child
           missing_fields: result.missing_fields.map((f: any) => ({
             field_name: f.field,
             field_type: 'string',
-            description: f.reason
+            description: f.reason,
+            required: f.required ?? true,
+            question: f.question ?? null
           })),
           summary: result.summary,
           confidence: result.confidence
@@ -119,6 +134,11 @@ export const SunoGovProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setStatus(null);
     setIsAnalyzing(false);
     setAnalysisError(null);
+    
+    // Reset conversational states
+    setMessages([]);
+    setCollectedFields({});
+    setCurrentQuestionIndex(-1);
   };
 
   return (
@@ -144,7 +164,15 @@ export const SunoGovProvider: React.FC<{ children: React.ReactNode }> = ({ child
         triggerMockAnalysis,
         updateGrievance,
         isAnalyzing,
-        analysisError
+        analysisError,
+        
+        // Conversational interface mapping
+        messages,
+        setMessages,
+        collectedFields,
+        setCollectedFields,
+        currentQuestionIndex,
+        setCurrentQuestionIndex
       }}
     >
       {children}

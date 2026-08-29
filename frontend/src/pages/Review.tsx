@@ -15,6 +15,7 @@ export const Review: React.FC = () => {
     analysis,
     setSubStep,
     updateGrievance,
+    collectedFields
   } = useSunoGov();
 
   const [categoryHelpOpen, setCategoryHelpOpen] = useState(false);
@@ -209,11 +210,21 @@ export const Review: React.FC = () => {
           </div>
 
           {/* Section: Reference Info */}
-          <div className="pt-5 pb-2 grid grid-cols-3 gap-2">
-            <span className="text-xs font-semibold text-neutral-400">UAN Reference</span>
-            <span className="text-sm font-bold text-neutral-800 col-span-2 font-mono">
-              {uan}
-            </span>
+          <div className="pt-5 pb-2 space-y-3">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block">Details Provided</span>
+            {collectedFields && Object.keys(collectedFields).length > 0 ? (
+              Object.entries(collectedFields).map(([key, val]) => (
+                <div key={key} className="grid grid-cols-3 gap-2 text-sm border-b border-neutral-100 pb-2">
+                  <span className="text-xs font-semibold text-neutral-400 capitalize">{key.replace(/_/g, ' ')}</span>
+                  <span className="text-sm font-bold text-neutral-800 col-span-2 font-mono">{val}</span>
+                </div>
+              ))
+            ) : (
+              <div className="grid grid-cols-3 gap-2 text-sm">
+                <span className="text-xs font-semibold text-neutral-400">UAN Reference</span>
+                <span className="text-sm font-bold text-neutral-800 col-span-2 font-mono">{uan}</span>
+              </div>
+            )}
           </div>
 
         </div>

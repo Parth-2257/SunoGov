@@ -1,30 +1,50 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSunoGov } from '../context/SunoGovContext';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Input } from '../components/ui/Input';
-import { Mic, CheckCircle2, ChevronRight, Edit2, Info, Loader2, AlertCircle, Globe, StopCircle, RefreshCw, Trash2 } from 'lucide-react';
+import { 
+  Mic, 
+  Send, 
+  Globe, 
+  Loader2, 
+  AlertCircle, 
+  StopCircle, 
+  Bot, 
+  User, 
+  Edit2, 
+  HelpCircle,
+  ChevronUp,
+  ChevronDown
+} from 'lucide-react';
 import { SpeechService, SpeechState } from '../services/speech';
+import { ChatMessage } from '../types';
 
 export const Report: React.FC = () => {
   const navigate = useNavigate();
   const {
     rawInput,
     setRawInput,
-    subStep,
-    setSubStep,
-    uan,
     setUan,
     analysis,
     triggerMockAnalysis,
     isAnalyzing,
     resetJourney,
-    analysisError
+    analysisError,
+    setRefId,
+    
+    // Conversation states from context
+    messages,
+    setMessages,
+    setCollectedFields,
+    currentQuestionIndex,
+    setCurrentQuestionIndex
   } = useSunoGov();
 
-  const [uanError, setUanError] = useState('');
-
+  const [composerText, setComposerText] = useState('');
+  const [isAskingOptionalYesNo, setIsAskingOptionalYesNo] = useState(false);
+  const [uanHelpOpen, setUanHelpOpen] = useState(false);
+  
   // Speech states
   const [speechState, setSpeechState] = useState<SpeechState>('IDLE');
   const [speechError, setSpeechError] = useState<string | null>(null);
@@ -33,12 +53,21 @@ export const Report: React.FC = () => {
   const [duration, setDuration] = useState<number>(0);
   const [liveTranscript, setLiveTranscript] = useState<string>('');
 
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
+
+  // Auto-scroll to bottom of chat
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isAnalyzing]);
+
+  // Format record timer duration
   const formatDuration = (secs: number): string => {
     const m = Math.floor(secs / 60);
     const s = secs % 60;
     return `${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
+  // Microphone toggle handler
   const handleMicClick = () => {
     setSpeechError(null);
     setLiveTranscript('');
@@ -51,7 +80,7 @@ export const Report: React.FC = () => {
         },
         onTranscript: (text) => {
           setLiveTranscript(text);
-          setRawInput(text);
+          setComposerText(text);
         },
         onError: (err) => {
           setSpeechState('ERROR');
@@ -72,624 +101,611 @@ export const Report: React.FC = () => {
     }
   };
 
+  // Cancel voice recording
   const handleCancelSpeech = () => {
     if (speechServiceInstance) {
       speechServiceInstance.stopListening();
     }
     setSpeechState('IDLE');
     setLiveTranscript('');
-    setRawInput('');
     setSpeechError(null);
   };
 
-  // ----------------------------------------
-  // Helper / Handlers
-  // ----------------------------------------
-  
-  const handleChipClick = async (scenarioText: string) => {
-    if (isAnalyzing) return;
-    setRawInput(scenarioText);
-    await triggerMockAnalysis(scenarioText);
-    setSubStep('understanding');
-  };
+  // Initialize conversation greeting
+  useEffect(() => {
+    if (messages.length === 0) {
+      const greeting: ChatMessage = {
+        id: 'init',
+        sender: 'assistant',
+        text: "Hello! Tell me what happened. You can type or speak in English, Hindi, or Marathi.",
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      
+      if (rawInput) {
+        // Came from scenario selection
+        const userMsg: ChatMessage = {
+          id: 'user-scenario',
+          sender: 'user',
+          text: rawInput,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        };
+        setMessages([greeting, userMsg]);
+      } else {
+        setMessages([greeting]);
+      }
+    }
+  }, [messages, rawInput, setMessages]);
 
-  const handleInputSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!rawInput.trim() || isAnalyzing) return;
+  // Handle classification response mapping
+  useEffect(() => {
+    if (!analysis || isAnalyzing) return;
+
+    // Check if we already appended confirmation message
+    const hasConfirm = messages.some(m => m.type === 'confirm_understanding');
+    if (!hasConfirm) {
+      const confirmMsg: ChatMessage = {
+        id: 'confirm-' + Date.now(),
+        sender: 'assistant',
+        text: "Here's what I understood. Please review this summary before we proceed.",
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        type: 'confirm_understanding'
+      };
+      setMessages(prev => [...prev, confirmMsg]);
+    }
+  }, [analysis, isAnalyzing, messages, setMessages]);
+
+  // Ask question for current missing field index
+  const askQuestionForIndex = (idx: number, currentAnalysis = analysis) => {
+    const fields = currentAnalysis?.missing_fields || [];
     
-    await triggerMockAnalysis(rawInput);
-    setSubStep('understanding');
-  };
-
-  const handleConfirmUnderstanding = () => {
-    setSubStep('info');
-  };
-
-  const handleInfoSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!uan.trim()) {
-      setUanError('Please enter a mock UAN value.');
+    if (idx >= fields.length) {
+      // All parameters collected successfully
+      const reviewMsg: ChatMessage = {
+        id: 'finish-' + Date.now(),
+        sender: 'assistant',
+        text: "Thank you. I have collected all the details needed to prepare your request.",
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        type: 'quick_reply',
+        options: ['Review request']
+      };
+      setMessages(prev => [...prev, reviewMsg]);
       return;
     }
-    setUanError('');
-    setSubStep('readiness');
+
+    const nextField = fields[idx];
+    if (nextField.required === false) {
+      setIsAskingOptionalYesNo(true);
+      const yesNoMsg: ChatMessage = {
+        id: 'yesno-' + Date.now(),
+        sender: 'assistant',
+        text: `Do you have a ${nextField.field_name.replace(/_/g, ' ')}?`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        type: 'quick_reply',
+        options: ['Yes', 'No']
+      };
+      setMessages(prev => [...prev, yesNoMsg]);
+    } else {
+      const askMsg: ChatMessage = {
+        id: 'ask-' + Date.now(),
+        sender: 'assistant',
+        text: nextField.question || `To continue, I need your ${nextField.field_name.replace(/_/g, ' ')}. ${nextField.description}`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, askMsg]);
+    }
   };
 
-  const handleContinueToReview = () => {
-    navigate('/review');
+  // Confirm understanding handler
+  const handleConfirmUnderstanding = () => {
+    if (!analysis) return;
+    
+    // Simulate user confirmation message
+    const userConfirmMsg: ChatMessage = {
+      id: 'user-confirm-' + Date.now(),
+      sender: 'user',
+      text: "Yes, that's correct.",
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    setMessages(prev => [...prev, userConfirmMsg]);
+
+    const reqType = analysis.request_type;
+
+    if (reqType === 'INFORMATION') {
+      const infoMsg: ChatMessage = {
+        id: 'info-redirect-' + Date.now(),
+        sender: 'assistant',
+        text: "Since this is an informational query, I will guide you to our official resources catalog.",
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        type: 'quick_reply',
+        options: ['View resources guide']
+      };
+      setMessages(prev => [...prev, infoMsg]);
+    } else if (reqType === 'STATUS') {
+      // Prompt for grievance tracking ID
+      const statusMsg: ChatMessage = {
+        id: 'status-prompt-' + Date.now(),
+        sender: 'assistant',
+        text: "Sure. Please enter your grievance reference ID.",
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, statusMsg]);
+    } else if (reqType === 'UNKNOWN') {
+      // Clarification prompt options
+      const clarificationMsg: ChatMessage = {
+        id: 'clarify-' + Date.now(),
+        sender: 'assistant',
+        text: "I want to make sure I understand your issue. What would you like help with?",
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        type: 'quick_reply',
+        options: ['PF Transfer', 'PF Claim', 'Pension', 'Grievance Status', 'Something else']
+      };
+      setMessages(prev => [...prev, clarificationMsg]);
+    } else {
+      // GRIEVANCE: Ask missing fields
+      setCurrentQuestionIndex(0);
+      askQuestionForIndex(0);
+    }
   };
 
-  // Demo chips data
-  const demoChips = [
-    { label: 'PF transfer pending', text: 'Mera PF transfer 3 mahine se pending hai.' },
-    { label: 'PF claim rejected', text: 'Mera PF claim reject ho gaya.' },
-    { label: 'Pension payment issue', text: 'Mera pension payment issue hai.' },
-    { label: 'Check grievance status', text: 'Grievance status check karna hai.' }
-  ];
+  // Submit composer text input
+  const handleSendText = async (text: string) => {
+    if (!text.trim()) return;
+
+    // Add user message to history
+    const userMsg: ChatMessage = {
+      id: 'user-' + Date.now(),
+      sender: 'user',
+      text: text,
+      timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    };
+    setMessages(prev => [...prev, userMsg]);
+    setComposerText('');
+
+    // Case 1: Initial user query submission
+    if (!analysis) {
+      setRawInput(text);
+      await triggerMockAnalysis(text);
+      return;
+    }
+
+    const reqType = analysis.request_type;
+
+    // Case 2: Status check flow
+    if (reqType === 'STATUS') {
+      setRefId(text);
+      const ackMsg: ChatMessage = {
+        id: 'ack-status-' + Date.now(),
+        sender: 'assistant',
+        text: `Checking status for Reference ID: ${text}... Redirecting to tracker.`,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, ackMsg]);
+      setTimeout(() => {
+        navigate('/track');
+      }, 1200);
+      return;
+    }
+
+    // Case 3: Clarification fallback flow
+    if (reqType === 'UNKNOWN') {
+      setRawInput(text);
+      await triggerMockAnalysis(text);
+      return;
+    }
+
+    // Case 4: Grievance missing fields answering
+    if (reqType === 'GRIEVANCE') {
+      const fields = analysis.missing_fields;
+      if (currentQuestionIndex >= 0 && currentQuestionIndex < fields.length) {
+        const activeField = fields[currentQuestionIndex];
+        
+        // Handling optional Yes/No quick replies
+        if (activeField.required === false && isAskingOptionalYesNo) {
+          const lowerAns = text.toLowerCase().trim();
+          if (lowerAns === 'no' || lowerAns === 'n' || lowerAns === 'skip') {
+            setIsAskingOptionalYesNo(false);
+            setCollectedFields(prev => ({ ...prev, [activeField.field_name]: 'Not provided' }));
+            const nextIdx = currentQuestionIndex + 1;
+            setCurrentQuestionIndex(nextIdx);
+            askQuestionForIndex(nextIdx);
+          } else {
+            setIsAskingOptionalYesNo(false);
+            const promptValueMsg: ChatMessage = {
+              id: 'prompt-val-' + Date.now(),
+              sender: 'assistant',
+              text: activeField.question || `Please enter the ${activeField.field_name.replace(/_/g, ' ')}.`,
+              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            };
+            setMessages(prev => [...prev, promptValueMsg]);
+          }
+          return;
+        }
+
+        // Specifically set the UAN parameter globally
+        if (activeField.field_name === 'uan') {
+          setUan(text);
+        }
+
+        // Store value
+        setCollectedFields(prev => ({ ...prev, [activeField.field_name]: text }));
+
+        // Move to next question
+        const nextIdx = currentQuestionIndex + 1;
+        setCurrentQuestionIndex(nextIdx);
+        askQuestionForIndex(nextIdx);
+      }
+    }
+  };
+
+  // Quick reply option clicks
+  const handleQuickReplyClick = (option: string) => {
+    // 1. Direct Page Navigations
+    if (option === 'Review request') {
+      navigate('/review');
+      return;
+    }
+    if (option === 'View resources guide' && analysis) {
+      navigate('/resources', { state: { intent: analysis.intent.name } });
+      return;
+    }
+
+    // 2. Intent Clarification Fallbacks
+    if (option === 'PF Transfer') {
+      handleSendText("I need help with my PF transfer");
+      return;
+    }
+    if (option === 'PF Claim') {
+      handleSendText("I need help with my PF claim");
+      return;
+    }
+    if (option === 'Pension') {
+      handleSendText("I have pension payout issues");
+      return;
+    }
+    if (option === 'Grievance Status') {
+      handleSendText("Check my grievance status");
+      return;
+    }
+    if (option === 'Something else') {
+      const askAgainMsg: ChatMessage = {
+        id: 'ask-again-' + Date.now(),
+        sender: 'assistant',
+        text: "Please describe your issue in a different way so I can understand.",
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, askAgainMsg]);
+      return;
+    }
+
+    // 3. Regular flow responses
+    handleSendText(option);
+  };
+
+  // Clear states to edit initial query
+  const handleEditOriginalQuery = () => {
+    resetJourney();
+  };
+
+  // Compute active question progress step
+  const getSubstepProgress = () => {
+    if (!analysis) return "Explain ● Details ○ Review ○";
+    if (analysis.request_type === 'INFORMATION' || analysis.request_type === 'STATUS' || analysis.request_type === 'UNKNOWN') {
+      return "Explain ✓ Details ● Review ○";
+    }
+    if (currentQuestionIndex >= analysis.missing_fields.length) {
+      return "Explain ✓ Details ✓ Review ●";
+    }
+    return `Details (Question ${currentQuestionIndex + 1} of ${analysis.missing_fields.length})`;
+  };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto flex flex-col h-[calc(100vh-140px)] bg-white border border-neutral-200 rounded-xl shadow-sm overflow-hidden">
+      
+      {/* Top Banner Header */}
+      <div className="bg-neutral-50 border-b border-neutral-200 px-4 py-3 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-full bg-primary-600 text-white flex items-center justify-center font-bold">
+            SG
+          </div>
+          <div>
+            <h3 className="text-sm font-bold text-neutral-800">SunoGov Assistant</h3>
+            <p className="text-[10px] text-neutral-400 font-semibold uppercase">Personalized guidance</p>
+          </div>
+        </div>
 
-      {/* Progress Tracker (Sub-steps) */}
-      <div className="flex items-center justify-between border-b border-neutral-200 pb-4 select-none">
-        <div className="flex items-center gap-1.5">
-          <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-            subStep === 'input' ? 'bg-primary-600 text-white shadow-sm' : 'bg-neutral-200 text-neutral-600'
-          }`}>1</span>
-          <span className={`text-xs font-semibold ${subStep === 'input' ? 'text-neutral-900 font-bold' : 'text-neutral-500'}`}>Explain Problem</span>
-        </div>
-        <ChevronRight className="w-3.5 h-3.5 text-neutral-300" />
-        <div className="flex items-center gap-1.5">
-          <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-            subStep === 'understanding' ? 'bg-primary-600 text-white shadow-sm' : 'bg-neutral-200 text-neutral-600'
-          }`}>2</span>
-          <span className={`text-xs font-semibold ${subStep === 'understanding' ? 'text-neutral-900 font-bold' : 'text-neutral-500'}`}>AI Understanding</span>
-        </div>
-        <ChevronRight className="w-3.5 h-3.5 text-neutral-300" />
-        <div className="flex items-center gap-1.5">
-          <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
-            subStep === 'info' || subStep === 'readiness' ? 'bg-primary-600 text-white shadow-sm' : 'bg-neutral-200 text-neutral-600'
-          }`}>3</span>
-          <span className={`text-xs font-semibold ${(subStep === 'info' || subStep === 'readiness') ? 'text-neutral-900 font-bold' : 'text-neutral-500'}`}>Provide Details</span>
-        </div>
+        {/* Header step progress */}
+        <span className="text-xs text-neutral-500 font-bold bg-neutral-200/60 px-2.5 py-1 rounded">
+          {getSubstepProgress()}
+        </span>
       </div>
 
-      {/* ==========================================
-          STEP 1: PROBLEM INPUT
-         ========================================== */}
-      {subStep === 'input' && (
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-2xl font-extrabold text-neutral-900">What happened?</h2>
-            <p className="text-sm text-neutral-500 mt-1.5">
-              Explain your problem in your own words. You don't need to know the EPFO terminology.
-            </p>
-          </div>
-
-          <Card>
-            <form onSubmit={handleInputSubmit} className="space-y-5">
-              {/* Language Selector (Only when IDLE or ERROR) */}
-              {(speechState === 'IDLE' || speechState === 'ERROR') && (
-                <div className="flex items-center justify-between text-xs text-neutral-600 bg-neutral-50 px-3 py-2 rounded-lg border border-neutral-200">
-                  <span className="font-semibold flex items-center gap-1.5">
-                    <Globe className="w-3.5 h-3.5 text-primary-500" />
-                    Speak in:
-                  </span>
-                  <select
-                    value={selectedLang}
-                    onChange={(e) => setSelectedLang(e.target.value)}
-                    className="bg-white border border-neutral-300 rounded px-2.5 py-1 text-xs focus:ring-primary-500 focus:border-primary-500 font-medium cursor-pointer"
-                  >
-                    <option value="en-IN">English (India)</option>
-                    <option value="hi-IN">Hindi (हिंदी)</option>
-                    <option value="mr-IN">Marathi (मराठी)</option>
-                  </select>
-                </div>
-              )}
-
-              {/* Speech Recording UX Panel */}
-              {speechState !== 'IDLE' && speechState !== 'ERROR' ? (
-                <div className="border border-neutral-200 rounded-lg p-6 bg-neutral-50/50 flex flex-col items-center justify-center space-y-4 text-center min-h-[180px]">
-                  {/* Timer & Pulsing Mic */}
-                  <div className="flex items-center gap-3">
-                    <div className={`p-4 rounded-full ${speechState === 'LISTENING' ? 'bg-red-500 text-white animate-pulse shadow' : 'bg-primary-100 text-primary-600'}`}>
-                      {speechState === 'TRANSCRIBING' ? (
-                        <Loader2 className="w-6 h-6 animate-spin" />
-                      ) : (
-                        <Mic className="w-6 h-6" />
-                      )}
-                    </div>
-                    {speechState === 'LISTENING' && (
-                      <span className="text-xl font-mono font-bold text-neutral-700">
-                        {formatDuration(duration)}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Status Text */}
-                  <div className="space-y-1">
-                    <h4 className="text-sm font-bold text-neutral-800">
-                      {speechState === 'LISTENING' && 'Listening... Start speaking now'}
-                      {speechState === 'TRANSCRIBING' && 'Transcribing your voice...'}
-                      {speechState === 'READY' && 'Done transcribing!'}
-                    </h4>
-                    <p className="text-xs text-neutral-500">
-                      Speaking language: {selectedLang === 'en-IN' ? 'English' : selectedLang === 'hi-IN' ? 'Hindi' : 'Marathi'}
-                    </p>
-                  </div>
-
-                  {/* Live Transcript Preview */}
-                  {liveTranscript && (
-                    <div className="w-full max-w-md bg-white border border-neutral-200 rounded-lg p-3 text-sm text-neutral-600 italic leading-relaxed text-left max-h-[80px] overflow-y-auto shadow-inner">
-                      "{liveTranscript}"
-                    </div>
-                  )}
-
-                  {/* Stop / Cancel Controls */}
-                  <div className="flex items-center gap-3">
-                    {speechState === 'LISTENING' && (
-                      <Button
-                        type="button"
-                        variant="primary"
-                        onClick={handleMicClick}
-                        className="gap-1.5 text-xs font-semibold px-4 py-2 bg-red-500 hover:bg-red-600 border-red-600"
-                      >
-                        <StopCircle className="w-4 h-4" />
-                        Stop Recording
-                      </Button>
-                    )}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleCancelSpeech}
-                      className="text-xs font-semibold px-4 py-2 border-neutral-300 hover:bg-neutral-50 text-neutral-600"
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                /* Textarea Form Layout */
-                <div className="relative">
-                  <label htmlFor="problem-description" className="sr-only">Explain your problem</label>
-                  <textarea
-                    id="problem-description"
-                    rows={6}
-                    value={rawInput}
-                    onChange={(e) => setRawInput(e.target.value)}
-                    className="w-full border border-neutral-300 rounded-lg p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 min-h-[140px]"
-                    placeholder="Example: Mera PF transfer 3 mahine se pending hai."
-                  ></textarea>
-                  
-                  {/* Mic Button overlay */}
-                  <div className="absolute right-3.5 bottom-3.5 flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={handleMicClick}
-                      aria-label="Start voice input"
-                      className="p-2.5 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-600 transition-all focus:outline-none focus:ring-2 focus:ring-primary-500 min-h-[44px] min-w-[44px] flex items-center justify-center"
-                    >
-                      <Mic className="w-5 h-5" />
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Speech Error Banner with Retry/Clear triggers */}
-              {speechError && (
-                <div className="p-3.5 bg-red-50 border border-red-200 text-red-800 rounded-lg text-xs space-y-2">
-                  <div className="flex items-center gap-1.5 font-semibold">
-                    <AlertCircle className="w-4.5 h-4.5 text-red-600 shrink-0" />
-                    <span>Voice Input Failed</span>
-                  </div>
-                  <p className="text-neutral-600 font-medium">{speechError}</p>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={handleMicClick}
-                      className="inline-flex items-center gap-1 bg-red-100 hover:bg-red-200 text-red-800 font-bold px-2.5 py-1 rounded text-[10px] cursor-pointer"
-                    >
-                      <RefreshCw className="w-3 h-3" />
-                      Try Again
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleCancelSpeech}
-                      className="inline-flex items-center gap-1 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 font-semibold px-2.5 py-1 rounded text-[10px] cursor-pointer"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                      Clear
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="flex justify-end pt-2">
-                <Button 
-                  type="submit" 
-                  variant="primary" 
-                  disabled={!rawInput.trim() || isAnalyzing || speechState !== 'IDLE'}
-                  className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5"
-                >
-                  {isAnalyzing ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      Analyzing...
-                    </>
-                  ) : (
-                    'Continue'
-                  )}
-                </Button>
+      {/* Messages Thread list */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        {messages.map((msg) => (
+          <div key={msg.id} className={`flex ${msg.sender === 'user' ? 'justify-end' : 'justify-start'}`}>
+            <div className={`flex items-start gap-2.5 max-w-[85%] ${msg.sender === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+              
+              {/* Profile Avatar Icon */}
+              <div className={`w-8 h-8 rounded-full shrink-0 flex items-center justify-center border ${
+                msg.sender === 'user' 
+                  ? 'bg-primary-50 border-primary-100 text-primary-600' 
+                  : 'bg-neutral-100 border-neutral-200 text-neutral-600'
+              }`}>
+                {msg.sender === 'user' ? <User className="w-4.5 h-4.5" /> : <Bot className="w-4.5 h-4.5" />}
               </div>
-            </form>
-          </Card>
 
-          {/* Scenario chips */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-neutral-400">Try a demo scenario</h3>
-            <div className="flex flex-wrap gap-2.5">
-              {demoChips.map((chip) => (
-                <button
-                  key={chip.label}
+              {/* Message Content Bubble wrapper */}
+              <div className="space-y-1.5">
+                <div className={`rounded-xl p-3.5 text-sm shadow-sm ${
+                  msg.sender === 'user' 
+                    ? 'bg-primary-600 text-white rounded-tr-none' 
+                    : 'bg-neutral-50 border border-neutral-200 text-neutral-800 rounded-tl-none'
+                }`}>
+                  {msg.text}
+                </div>
+
+                {/* Confirm Understanding Card node */}
+                {msg.type === 'confirm_understanding' && analysis && (
+                  <Card className="bg-white border-neutral-200 shadow-sm p-4 space-y-4 max-w-md">
+                    <div className="space-y-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block">Your Issue</span>
+                      <p className="text-base font-bold text-neutral-900 leading-snug">{analysis.summary}</p>
+                    </div>
+                    <div className="space-y-2 pt-2 border-t border-neutral-100">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block">What you told us</span>
+                      <p className="text-xs text-neutral-600 leading-relaxed italic bg-neutral-50 p-2.5 rounded">"{rawInput}"</p>
+                    </div>
+                    <div className="flex gap-3 pt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleEditOriginalQuery}
+                        className="flex-1 gap-1 border-neutral-300 font-bold text-xs"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                        Edit
+                      </Button>
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={handleConfirmUnderstanding}
+                        className="flex-1 font-bold text-xs shadow-sm"
+                      >
+                        Confirm
+                      </Button>
+                    </div>
+                  </Card>
+                )}
+
+                {/* Show Why We Ask block for UAN input question */}
+                {msg.sender === 'assistant' && analysis && 
+                 analysis.missing_fields[currentQuestionIndex]?.field_name === 'uan' && 
+                 msg.text.includes('UAN') && (
+                  <div className="mt-1 max-w-sm rounded-lg overflow-hidden border border-neutral-200 bg-neutral-50">
+                    <button
+                      type="button"
+                      onClick={() => setUanHelpOpen(!uanHelpOpen)}
+                      className="w-full px-3 py-1.5 flex items-center justify-between text-[11px] text-neutral-500 hover:text-neutral-800 font-semibold focus:outline-none"
+                    >
+                      <span className="flex items-center gap-1">
+                        <HelpCircle className="w-3.5 h-3.5 text-primary-500" />
+                        Why do we ask for UAN?
+                      </span>
+                      {uanHelpOpen ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+                    </button>
+                    {uanHelpOpen && (
+                      <div className="px-3 pb-3 pt-0.5 text-[11px] text-neutral-500 leading-relaxed border-t border-neutral-100 bg-white">
+                        We ask for this universal identifier only to simulate locating your EPFO account records in this prototype environment. <strong>Do NOT enter real credentials.</strong>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Quick Reply Selection Buttons */}
+                {msg.type === 'quick_reply' && msg.options && (
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {msg.options.map((opt) => (
+                      <button
+                        key={opt}
+                        onClick={() => handleQuickReplyClick(opt)}
+                        className="px-4 py-1.5 rounded-full bg-white border border-primary-200 hover:bg-primary-50 text-xs font-bold text-primary-600 transition-colors shadow-sm focus:ring-2 focus:ring-primary-500"
+                      >
+                        {opt}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <span className="text-[10px] text-neutral-400 block px-1 mt-1 font-medium">{msg.timestamp}</span>
+              </div>
+
+            </div>
+          </div>
+        ))}
+
+        {/* Loading/Inference Spinner bubble */}
+        {isAnalyzing && (
+          <div className="flex justify-start">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-full bg-neutral-100 border border-neutral-200 flex items-center justify-center text-neutral-500">
+                <Loader2 className="w-4 h-4 animate-spin" />
+              </div>
+              <div className="bg-neutral-100 rounded-xl p-3 text-xs font-bold text-neutral-500 animate-pulse">
+                Understanding your request…
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Error notification bubble */}
+        {analysisError && (
+          <div className="p-3.5 bg-red-50 border border-red-200 text-red-800 rounded-xl text-xs space-y-2.5 max-w-md mx-auto">
+            <div className="flex items-center gap-1.5 font-bold">
+              <AlertCircle className="w-4.5 h-4.5 text-red-600 shrink-0" />
+              <span>Connection Issue</span>
+            </div>
+            <p className="text-neutral-600 leading-relaxed">
+              We couldn't process that right now. Please try again.
+            </p>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => triggerMockAnalysis(rawInput)}
+              className="text-[10px] font-bold border-red-200 bg-red-100 hover:bg-red-200 text-red-800 px-3 py-1"
+            >
+              Try Again
+            </Button>
+          </div>
+        )}
+
+        <div ref={chatEndRef} />
+      </div>
+
+      {/* Speech UX overlay timer block */}
+      {speechState !== 'IDLE' && (
+        <div className="px-4 py-3 bg-neutral-50 border-t border-neutral-200 space-y-2 text-sm">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-full ${speechState === 'LISTENING' ? 'bg-red-500 text-white animate-pulse' : 'bg-primary-100 text-primary-600'}`}>
+                <Mic className="w-4 h-4" />
+              </div>
+              <div>
+                <p className="font-bold text-neutral-800">
+                  {speechState === 'LISTENING' ? 'Listening...' : speechState === 'ERROR' ? 'Voice Error' : 'Transcribing voice...'}
+                </p>
+                <p className="text-xs text-neutral-500 font-mono">
+                  {selectedLang === 'en-IN' ? 'English (India)' : selectedLang === 'hi-IN' ? 'Hindi' : 'Marathi'} • {formatDuration(duration)}
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              {speechState === 'LISTENING' && (
+                <Button
                   type="button"
-                  onClick={() => handleChipClick(chip.text)}
-                  className={`
-                    px-3.5 py-1.5 rounded-full text-xs font-semibold border transition-all
-                    ${rawInput === chip.text 
-                      ? 'bg-primary-500 border-primary-500 text-white shadow-sm' 
-                      : 'bg-white border-neutral-200 text-neutral-600 hover:border-neutral-300 hover:bg-neutral-50'
-                    }
-                  `}
+                  variant="primary"
+                  size="sm"
+                  onClick={handleMicClick}
+                  className="bg-red-500 hover:bg-red-600 border-red-600 text-xs font-bold px-3 py-1"
                 >
-                  {chip.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ==========================================
-          STEP 2: UNDERSTANDING
-          ========================================== */}
-      {subStep === 'understanding' && isAnalyzing && (
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-2xl font-extrabold text-neutral-900 animate-pulse">Understanding your request…</h2>
-            <p className="text-sm text-neutral-500 mt-1.5">
-              Just a moment while we review what you told us.
-            </p>
-          </div>
-          <Card className="flex flex-col items-center justify-center p-12 text-center space-y-4 bg-white border border-neutral-200 shadow-sm min-h-[220px]">
-            <Loader2 className="w-10 h-10 text-primary-500 animate-spin" />
-            <div className="space-y-1">
-              <h3 className="text-base font-bold text-neutral-800">Analyzing your words</h3>
-              <p className="text-xs text-neutral-500 max-w-sm">
-                SunoGov is processing your description to identify categories and missing details.
-              </p>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {subStep === 'understanding' && analysisError && (
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-2xl font-extrabold text-neutral-900">Analysis Failed</h2>
-            <p className="text-sm text-neutral-500 mt-1.5">
-              We encountered an issue while trying to analyze your request.
-            </p>
-          </div>
-          <Card className="flex flex-col items-center justify-center p-8 text-center space-y-4 bg-white border border-red-200 shadow-sm">
-            <AlertCircle className="w-10 h-10 text-red-500" />
-            <div className="space-y-1">
-              <h3 className="text-sm font-bold text-neutral-800">Connection Issue</h3>
-              <p className="text-xs text-neutral-500 max-w-sm leading-relaxed">
-                We couldn't process your request right now. Please try again.
-              </p>
-            </div>
-            <div className="flex gap-3 pt-2">
+                  <StopCircle className="w-3.5 h-3.5 mr-1" />
+                  Stop
+                </Button>
+              )}
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setSubStep('input')}
-                className="text-xs font-semibold px-4 py-2 border-neutral-300"
+                size="sm"
+                onClick={handleCancelSpeech}
+                className="border-neutral-300 text-xs font-bold px-3 py-1"
               >
-                Go Back
-              </Button>
-              <Button
-                type="button"
-                variant="primary"
-                onClick={() => triggerMockAnalysis(rawInput)}
-                className="text-xs font-semibold px-4 py-2"
-              >
-                Retry Analysis
+                Cancel
               </Button>
             </div>
-          </Card>
-        </div>
-      )}
-
-      {subStep === 'understanding' && !isAnalyzing && !analysisError && analysis && (
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-2xl font-extrabold text-neutral-900">Here's what we understood</h2>
-            <p className="text-sm text-neutral-500 mt-1.5">
-              We used AI to understand your request. Please check that we've got it right.
-            </p>
           </div>
 
-          <Card className="divide-y divide-neutral-100 bg-white shadow-sm border border-neutral-200">
-            <div className="pb-5 space-y-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block">Your Issue</span>
-              <p className="text-lg font-bold text-neutral-900 leading-snug">
-                {analysis.summary}
-              </p>
+          {/* Transcript Preview */}
+          {liveTranscript && (
+            <div className="bg-white border border-neutral-200 rounded p-2 text-xs italic text-neutral-600">
+              "{liveTranscript}"
             </div>
+          )}
 
-            <div className="py-5 space-y-2">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-400 block">What you told us</span>
-              <p className="text-sm text-neutral-600 leading-relaxed bg-neutral-50 p-3 rounded-lg border border-neutral-100 italic">
-                "{rawInput}"
-              </p>
-            </div>
-
-            <div className="py-3 flex items-center gap-2 text-neutral-500">
-              <Info className="w-4 h-4 text-primary-500 shrink-0" />
-              <p className="text-xs text-neutral-600">
-                AI-generated understanding • Please review before continuing.
-              </p>
-            </div>
-
-            <div className="pt-5 flex flex-col sm:flex-row justify-between items-center gap-4">
-              <button
-                type="button"
-                onClick={() => setSubStep('input')}
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-neutral-500 hover:text-neutral-700 focus:outline-none focus:underline"
-              >
-                <Edit2 className="w-3.5 h-3.5" />
-                Need to change something?
-              </button>
-
-              <Button 
-                variant="primary" 
-                onClick={handleConfirmUnderstanding}
-                className="w-full sm:w-auto px-6 font-semibold shadow-sm focus:ring-2 focus:ring-primary-500"
-              >
-                Confirm
-              </Button>
-            </div>
-          </Card>
-        </div>
-      )}
-
-      {/* ==========================================
-          STEP 3: REQUIRED INFORMATION
-         ========================================== */}
-      {subStep === 'info' && analysis && (
-        <div className="space-y-6">
-          {analysis.request_type === 'INFORMATION' ? (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-extrabold text-neutral-900">Information Resources</h2>
-                <p className="text-sm text-neutral-500 mt-1.5">
-                  Your query has been classified as informational.
-                </p>
-              </div>
-              <Card className="space-y-5">
-                <div className="p-4 bg-primary-50 rounded-lg border border-primary-100 text-sm text-primary-800 leading-relaxed">
-                  <p className="font-bold">No Grievance Required</p>
-                  <p className="mt-1">
-                    Formal grievances are for resolving service failures (e.g. transfer delays, claim rejections). Since your query is seeking general information, we recommend exploring our verified guidelines catalog.
-                  </p>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => navigate('/')}
-                    className="w-full sm:w-auto"
-                  >
-                    Back to home
-                  </Button>
-                  <Button
-                    variant="primary"
-                    onClick={() => navigate('/resources', { state: { intent: analysis.intent.name } })}
-                    className="w-full sm:w-auto"
-                  >
-                    View resources guide
-                  </Button>
-                </div>
-              </Card>
-            </div>
-          ) : analysis.request_type === 'STATUS' ? (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-extrabold text-neutral-900">Track Grievance Status</h2>
-                <p className="text-sm text-neutral-500 mt-1.5">
-                  You are inquiring about the status of a filed ticket.
-                </p>
-              </div>
-              <Card className="space-y-5">
-                <div className="p-4 bg-primary-50 rounded-lg border border-primary-100 text-sm text-primary-800 leading-relaxed">
-                  <p className="font-bold">Status Inquiry Classification</p>
-                  <p className="mt-1">
-                    If you already have a grievance reference number, you can check its live progress timeline immediately from our tracking dashboard page.
-                  </p>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => navigate('/')}
-                    className="w-full sm:w-auto"
-                  >
-                    Back to home
-                  </Button>
-                  <Button
-                    variant="primary"
-                    onClick={() => {
-                      resetJourney();
-                      navigate('/');
-                    }}
-                    className="w-full sm:w-auto"
-                  >
-                    Go to tracking
-                  </Button>
-                </div>
-              </Card>
-            </div>
-          ) : analysis.request_type === 'UNKNOWN' ? (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-extrabold text-neutral-900">Clarification Needed</h2>
-                <p className="text-sm text-neutral-500 mt-1.5">
-                  We could not determine the type of your request.
-                </p>
-              </div>
-              <Card className="space-y-5">
-                <div className="p-4 bg-red-50 rounded-lg border border-red-200 text-sm text-red-800 leading-relaxed">
-                  <p className="font-bold">Clarification Notice</p>
-                  <p className="mt-1">
-                    The query analysis was unable to identify a clear EPFO category. Please try re-explaining the issue with alternative keywords (e.g. mention "transfer", "claim", or "pension") or provide more context.
-                  </p>
-                </div>
-                <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                  <Button
-                    variant="outline"
-                    onClick={() => navigate('/')}
-                    className="w-full sm:w-auto"
-                  >
-                    Back to home
-                  </Button>
-                  <Button
-                    variant="primary"
-                    onClick={() => {
-                      setSubStep('input');
-                    }}
-                    className="w-full sm:w-auto"
-                  >
-                    Explain again
-                  </Button>
-                </div>
-              </Card>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-2xl font-extrabold text-neutral-900">We need one detail to continue</h2>
-                <p className="text-sm text-neutral-500 mt-1.5">
-                  Please provide the following identifier to locate your simulated member record.
-                </p>
-              </div>
-
-              <Card className="bg-white border border-neutral-200 shadow-sm">
-                <form onSubmit={handleInfoSubmit} className="space-y-6">
-                  
-                  {/* Field Label & Explanation */}
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-neutral-800 uppercase tracking-wider">UAN Number (Universal Account Number)</span>
-                      <span className="text-xs font-semibold px-2 py-0.5 bg-red-50 text-red-700 rounded-full border border-red-100">Required</span>
-                    </div>
-                    
-                    {/* Explain why we ask */}
-                    <div className="p-3.5 bg-primary-50 rounded-lg border border-primary-100 text-xs text-primary-800 leading-relaxed">
-                      <strong>Why we need it:</strong> We use this only to identify the simulated PF account in this prototype. {analysis.missing_fields[0]?.description}
-                    </div>
-                  </div>
-
-                  {/* UAN Input */}
-                  <Input
-                    label="Synthetic UAN Value"
-                    placeholder="e.g. DEMO-1234"
-                    value={uan}
-                    error={uanError}
-                    onChange={(e) => {
-                      setUan(e.target.value);
-                      if (e.target.value.trim()) setUanError('');
-                    }}
-                    helperText="Important: Do NOT enter actual EPFO details. Use a dummy value like DEMO-1234."
-                  />
-
-                  {/* Buttons */}
-                  <div className="flex justify-between items-center pt-4 border-t border-neutral-100">
-                    <button
-                      type="button"
-                      onClick={() => setSubStep('understanding')}
-                      className="inline-flex items-center gap-1 text-xs font-bold text-neutral-500 hover:text-neutral-700 focus:outline-none"
-                    >
-                      ← Back
-                    </button>
-                    <Button 
-                      type="submit" 
-                      variant="primary" 
-                      className="w-full sm:w-auto px-6 font-semibold shadow-sm focus:ring-2 focus:ring-primary-500"
-                    >
-                      Continue
-                    </Button>
-                  </div>
-                </form>
-              </Card>
+          {/* Speech Error Banner */}
+          {speechState === 'ERROR' && speechError && (
+            <div className="bg-red-50 text-red-700 text-xs rounded p-2 font-medium">
+              {speechError}
             </div>
           )}
         </div>
       )}
 
-      {/* ==========================================
-          STEP 4: READINESS CHECK
-         ========================================== */}
-      {subStep === 'readiness' && (
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-2xl font-extrabold text-neutral-900">You're almost ready</h2>
-            <p className="text-sm text-neutral-500 mt-1.5">
-              Confirm the checklist is fully complete to proceed to review.
-            </p>
+      {/* Composer Input Footer Form */}
+      <div className="border-t border-neutral-200 bg-neutral-50 p-3 space-y-2">
+        <form 
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSendText(composerText);
+          }}
+          className="flex items-center gap-2.5"
+        >
+          {/* Free-form text input */}
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={composerText}
+              disabled={isAnalyzing || speechState === 'LISTENING' || speechState === 'TRANSCRIBING'}
+              onChange={(e) => setComposerText(e.target.value)}
+              placeholder={isAnalyzing ? "Processing..." : "Type your message..."}
+              className="block w-full rounded-lg border border-neutral-300 bg-white px-3.5 py-2.5 text-sm placeholder-neutral-400 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:bg-neutral-100"
+            />
           </div>
 
-          <Card className="space-y-6">
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="w-5 h-5 text-accent-500" />
-                <span className="text-sm text-neutral-700 font-medium">Problem understood</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="w-5 h-5 text-accent-500" />
-                <span className="text-sm text-neutral-700 font-medium">Request type identified</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="w-5 h-5 text-accent-500" />
-                <span className="text-sm text-neutral-700 font-medium">Category selected</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="w-5 h-5 text-accent-500" />
-                <span className="text-sm text-neutral-700 font-medium">Required information provided</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <CheckCircle2 className="w-5 h-5 text-accent-500" />
-                <span className="text-sm text-neutral-700 font-medium">Grievance description ready</span>
-              </div>
-            </div>
+          {/* Microphone button trigger */}
+          <button
+            type="button"
+            onClick={handleMicClick}
+            disabled={isAnalyzing || speechState === 'TRANSCRIBING'}
+            className={`p-2.5 rounded-lg border focus:ring-2 focus:ring-primary-500 focus:outline-none ${
+              speechState === 'LISTENING' 
+                ? 'bg-red-500 border-red-500 text-white' 
+                : 'bg-white border-neutral-300 text-neutral-500 hover:bg-neutral-50'
+            }`}
+            aria-label="Toggle voice input microphone"
+          >
+            {speechState === 'LISTENING' ? <StopCircle className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+          </button>
 
-            <div className="flex justify-between items-center pt-5 border-t border-neutral-100">
+          {/* Send text button */}
+          <button
+            type="submit"
+            disabled={!composerText.trim() || isAnalyzing || speechState === 'LISTENING'}
+            className="p-2.5 rounded-lg bg-primary-600 border border-primary-600 text-white hover:bg-primary-700 disabled:bg-neutral-300 disabled:border-neutral-300 disabled:cursor-not-allowed focus:ring-2 focus:ring-primary-500 focus:outline-none"
+            aria-label="Send message"
+          >
+            <Send className="w-5 h-5" />
+          </button>
+        </form>
+
+        {/* Language selector for speech service */}
+        {(speechState === 'IDLE' || speechState === 'ERROR') && (
+          <div className="flex items-center justify-between text-[11px] text-neutral-500 px-1 pt-1 select-none">
+            <span className="flex items-center gap-1 font-semibold text-neutral-400">
+              <Globe className="w-3.5 h-3.5 text-neutral-400" />
+              Speaking language:
+            </span>
+            <div className="flex gap-2 font-bold">
               <button
                 type="button"
-                onClick={() => setSubStep('info')}
-                className="text-sm font-semibold text-neutral-500 hover:text-neutral-700 focus:outline-none"
+                onClick={() => setSelectedLang('en-IN')}
+                className={`px-2 py-0.5 rounded transition-all cursor-pointer ${
+                  selectedLang === 'en-IN' ? 'bg-primary-100 text-primary-700' : 'text-neutral-400 hover:text-neutral-600'
+                }`}
               >
-                ← Back
+                English
               </button>
-              <Button 
-                variant="primary" 
-                onClick={handleContinueToReview}
-                className="w-full sm:w-auto"
+              <button
+                type="button"
+                onClick={() => setSelectedLang('hi-IN')}
+                className={`px-2 py-0.5 rounded transition-all cursor-pointer ${
+                  selectedLang === 'hi-IN' ? 'bg-primary-100 text-primary-700' : 'text-neutral-400 hover:text-neutral-600'
+                }`}
               >
-                Ready to review
-              </Button>
+                Hindi
+              </button>
+              <button
+                type="button"
+                onClick={() => setSelectedLang('mr-IN')}
+                className={`px-2 py-0.5 rounded transition-all cursor-pointer ${
+                  selectedLang === 'mr-IN' ? 'bg-primary-100 text-primary-700' : 'text-neutral-400 hover:text-neutral-600'
+                }`}
+              >
+                Marathi
+              </button>
             </div>
-          </Card>
-        </div>
-      )}
+          </div>
+        )}
+      </div>
 
     </div>
   );

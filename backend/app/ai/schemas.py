@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -30,8 +30,10 @@ class AIIntent(str, Enum):
 # ==========================================
 
 class AIMissingField(BaseModel):
-    field: str = Field(..., description="The parameter label identified as missing, e.g. UAN")
+    field: str = Field(..., description="The parameter label identified as missing, e.g. uan")
     reason: str = Field(..., description="Contextual user-facing rationale why this parameter is required")
+    required: bool = Field(default=True, description="Whether this field is mandatory for final submission")
+    question: Optional[str] = Field(default=None, description="Clear, citizen-friendly question asking for this field")
 
 
 class AIAnalysisSchema(BaseModel):

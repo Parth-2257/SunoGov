@@ -41,6 +41,28 @@ class AIAnalyzer:
                     detected_confidence=result.confidence
                 )
 
+            # Filter and validate missing fields against strict whitelist
+            SUPPORTED_FIELDS = {
+                "uan",
+                "transfer_reference_number",
+                "claim_reference_number",
+                "grievance_reference_number",
+                "ppo_number",
+                "employer_details",
+                "issue_date",
+                "additional_context"
+            }
+            
+            validated_fields = []
+            for item in result.missing_fields:
+                field_lower = item.field.strip().lower()
+                if field_lower in SUPPORTED_FIELDS:
+                    item.field = field_lower
+                    validated_fields.append(item)
+                else:
+                    logger.warning("Event: Unsupported AI Field Ignored | Field: %s", field_lower)
+            result.missing_fields = validated_fields
+
             logger.info(
                 "Event: AI Analysis Completed | RequestType: %s | Intent: %s | Confidence: %.2f",
                 result.request_type, result.intent, result.confidence

@@ -6,6 +6,8 @@ export interface MissingField {
   field_name: string;
   field_type: string;
   description: string;
+  required?: boolean;
+  question?: string | null;
 }
 
 export interface Intent {
@@ -48,4 +50,13 @@ export interface ResourceItem {
   what_you_need?: string[];
   what_to_do?: string[];
   when_to_file_grievance?: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  sender: 'assistant' | 'user';
+  text: string;
+  timestamp: string;
+  type?: 'text' | 'clarification' | 'confirm_understanding' | 'quick_reply';
+  options?: string[];
 }

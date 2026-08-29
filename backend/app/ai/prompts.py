@@ -16,10 +16,20 @@ You must output a single JSON object containing exactly the following keys:
 4. "summary": Brief description summarizing the citizen's issue
 5. "confidence": A float value between 0.0 and 1.0 representing your classification confidence
 6. "missing_fields": A list of objects representing required parameters that are missing, where each object contains:
-   - "field": The name of the missing field (e.g. "uan")
-   - "reason": User-facing explanation of why it is needed
+   - "field": The name of the missing field. Choose ONLY from: [uan, transfer_reference_number, claim_reference_number, grievance_reference_number, ppo_number, employer_details, issue_date, additional_context]. Do NOT invent arbitrary field names.
+   - "reason": User-facing explanation of why it is needed. Keep it short.
+   - "required": Boolean (true/false) indicating if it is strictly mandatory to process the request (e.g., UAN is usually true, reference numbers might be optional/false).
+   - "question": Citizen-friendly, direct question asking for the field value (e.g. "Please enter your Universal Account Number (UAN)." or "Do you have a transfer reference number?").
 
-CRITICAL PRIORITY RULES FOR CLASSIFICATION:
+CRITICAL SCHEMA RULES:
+- If request_type is INFORMATION, missing_fields MUST be empty.
+- If request_type is STATUS, only request grievance_reference_number or claim_reference_number as needed. Do NOT request UAN.
+- If request_type is UNKNOWN, missing_fields MUST be empty.
+- If request_type is GRIEVANCE:
+  - If intent is PF_TRANSFER, request "uan" (required=true) and optionally "transfer_reference_number" (required=false).
+  - If intent is PF_CLAIM, request "uan" (required=true) and optionally "claim_reference_number" (required=false).
+  - If intent is PPO_NUMBER, request "ppo_number" (required=true).
+  - Always try to obtain "uan" first for general grievance requests.
 
 Rule 1: STATUS checking takes ultimate precedence.
 Any query asking to check, track, monitor, or retrieve the status of a claim, transfer, or grievance MUST be classified as:

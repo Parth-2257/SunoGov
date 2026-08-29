@@ -20,7 +20,14 @@ class MockAIProvider(AIProvider):
                 language="hinglish",
                 summary="Checking the status of a filed grievance.",
                 confidence=0.96,
-                missing_fields=[]
+                missing_fields=[
+                    AIMissingField(
+                        field="grievance_reference_number",
+                        reason="We need your grievance reference ID to track your request.",
+                        required=True,
+                        question="Please enter your grievance reference ID."
+                    )
+                ]
             )
 
         # Rule 2: Claims Rejection
@@ -35,7 +42,15 @@ class MockAIProvider(AIProvider):
                 missing_fields=[
                     AIMissingField(
                         field="uan",
-                        reason="We need your UAN to retrieve your claim records."
+                        reason="We need your UAN to retrieve your claim records.",
+                        required=True,
+                        question="What is your UAN?"
+                    ),
+                    AIMissingField(
+                        field="claim_reference_number",
+                        reason="Optional claim reference number allows us to trace the specific transaction.",
+                        required=False,
+                        question="Do you have a claim reference number?"
                     )
                 ]
             )
@@ -52,7 +67,15 @@ class MockAIProvider(AIProvider):
                 missing_fields=[
                     AIMissingField(
                         field="uan",
-                        reason="We need your UAN to verify your EPS contribution records."
+                        reason="We need your UAN to verify your EPS contribution records.",
+                        required=True,
+                        question="What is your UAN?"
+                    ),
+                    AIMissingField(
+                        field="ppo_number",
+                        reason="Optional pension payment order (PPO) number helps track EPS payments.",
+                        required=False,
+                        question="Do you have a PPO number?"
                     )
                 ]
             )
@@ -81,7 +104,9 @@ class MockAIProvider(AIProvider):
                 missing_fields=[
                     AIMissingField(
                         field="uan",
-                        reason="We need your UAN to process the withdrawal request."
+                        reason="We need your UAN to process the withdrawal request.",
+                        required=True,
+                        question="What is your UAN?"
                     )
                 ]
             )
@@ -106,7 +131,15 @@ class MockAIProvider(AIProvider):
                 missing_fields=[
                     AIMissingField(
                         field="uan",
-                        reason="We need your UAN to identify the PF record related to your grievance."
+                        reason="We need your UAN to identify the PF record related to your grievance.",
+                        required=True,
+                        question="What is your UAN?"
+                    ),
+                    AIMissingField(
+                        field="transfer_reference_number",
+                        reason="Optional transfer reference number allows us to locate the exact transaction.",
+                        required=False,
+                        question="Do you have a transfer reference number?"
                     )
                 ]
             )
