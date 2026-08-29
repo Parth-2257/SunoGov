@@ -2,6 +2,7 @@ from app.ai.base import AIProvider
 from app.ai.schemas import AIAnalysisSchema, AIRequestType, AIIntent, AIMissingField
 
 
+# Mock provider for testing and fallback scenarios
 class MockAIProvider(AIProvider):
     """
     Deterministic AI provider simulator for Phase 3A architecture validation.
