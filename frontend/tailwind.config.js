@@ -8,16 +8,16 @@ export default {
     extend: {
       colors: {
         primary: {
-          50: '#f0f4f9',
-          100: '#e1e9f2',
-          200: '#b8ccdf',
-          300: '#90b0cc',
-          400: '#6793b8',
-          500: '#1d5e93', // Trustworthy deep blue
-          600: '#1a5484',
-          700: '#16476e',
-          800: '#113857',
-          900: '#0e2b43',
+          50: '#fffdfb',
+          100: '#fff3e0',
+          200: '#ffe0b2',
+          300: '#ffcc80',
+          400: '#ffb74d',
+          500: '#f57c00', // Saffron Orange
+          600: '#e65100', // Deep Saffron Accent
+          700: '#d84315',
+          800: '#bf360c',
+          900: '#3e2723',
         },
         accent: {
           50: '#f0faf6',

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, NavLink, Outlet } from 'react-router-dom';
-import { Menu, X, Landmark, HeartHandshake } from 'lucide-react';
+import { Menu, X, Landmark } from 'lucide-react';
 
 export const RootLayout: React.FC = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -18,6 +18,13 @@ export const RootLayout: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-neutral-50 text-neutral-900 font-sans">
+      {/* Indian National Tri-color top accent bar */}
+      <div className="w-full h-1.5 flex shrink-0 select-none" aria-hidden="true">
+        <div className="flex-1 bg-[#FF9933]"></div>
+        <div className="flex-1 bg-white"></div>
+        <div className="flex-1 bg-[#138808]"></div>
+      </div>
+
       {/* Keyboard Accessibility Skip Link */}
       <a
         href="#main-content"
@@ -31,17 +38,17 @@ export const RootLayout: React.FC = () => {
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             
-            {/* Brand Logo - Plain text, no government emblems to respect disclaimers */}
+            {/* Brand Logo */}
             <Link 
               to="/" 
               className="flex items-center gap-2.5 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 rounded-md p-1"
             >
-              <div className="w-8 h-8 rounded-lg bg-primary-500 text-white flex items-center justify-center">
-                <HeartHandshake className="w-5 h-5" />
+              <div className="w-8 h-8 rounded-lg bg-primary-500 text-white flex items-center justify-center shadow-sm">
+                <Landmark className="w-4.5 h-4.5" />
               </div>
               <div className="flex flex-col">
-                <span className="text-lg font-bold tracking-tight text-primary-900">SunoGov</span>
-                <span className="text-[10px] text-neutral-500 font-semibold uppercase tracking-wider -mt-1">EPFO Support Hub</span>
+                <span className="text-lg font-bold tracking-tight text-neutral-900">SunoGov</span>
+                <span className="text-[9px] text-neutral-500 font-bold uppercase tracking-wider -mt-1">EPFO Citizen Support Hub</span>
               </div>
             </Link>
 
