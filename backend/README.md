@@ -70,3 +70,7 @@ backend/
   * `GET /api/grievances/{id}` -> Fetches grievance status
   * `POST /api/grievances/{id}/remind` -> Sends a reminder
   * `GET /api/resources` -> Fetches FAQs/Guides
+
+
+### Running in Reload Mode
+To automatically refresh python code during active edits, use `--reload` flag during local launches.
